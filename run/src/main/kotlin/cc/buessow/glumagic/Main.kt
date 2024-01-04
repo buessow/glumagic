@@ -21,8 +21,15 @@ object Main {
         ArgType.String,
         shortName = "s", fullName = "server",
         description = "MongoDB server host, e.g. 'mongodb+srv://cluster0.10utl.gcp.mongodb.net'").required()
+    val version by parser.option(
+        ArgType.Boolean, shortName = "v", description = "Version information")
 
     parser.parse(args)
+
+    if (version == true) {
+      println("version 1.0")
+      return
+    }
 
     MongoDbInputProvider(host, database, userName, password).use { input ->
       for (dv in input.getGlucoseReadings(Instant.now().minusSeconds(1800L)).blockingGet()) {

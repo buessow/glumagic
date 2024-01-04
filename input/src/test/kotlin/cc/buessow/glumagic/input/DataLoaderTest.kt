@@ -18,8 +18,7 @@ class DataLoaderTest {
       trainingPeriod = ofMinutes(30),
       predictionPeriod = ofMinutes(15),
       hrHighThreshold = 120,
-      hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2))
-  )
+      hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)))
 
   private val now = Instant.parse("2013-12-13T20:00:00Z")
   private val from = now - config.trainingPeriod
