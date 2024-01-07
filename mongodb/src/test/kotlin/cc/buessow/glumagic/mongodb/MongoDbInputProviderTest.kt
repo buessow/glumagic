@@ -72,6 +72,18 @@ class MongoDbInputProviderTest {
     return DateValue(timestamp, value.toDouble())
   }
 
+  private suspend fun createHeartRateActivity(timestamp: Instant, value: Int): DateValue {
+    db.getCollection<MongoHeartRateActivity>("activity").insertOne(
+        MongoHeartRateActivity(timestamp.toEpochMilli(), value))
+    return DateValue(timestamp, value.toDouble())
+  }
+
+  private suspend fun createHeartRateTreatments(timestamp: Instant, value: Int): DateValue {
+    db.getCollection<MongoHeartRateTreatment>("activity").insertOne(
+        MongoHeartRateTreatment(timestamp.toEpochMilli(), value))
+    return DateValue(timestamp, value.toDouble())
+  }
+
   @Test
   fun getHeartRates() {
     val e = runBlocking {
@@ -79,7 +91,10 @@ class MongoDbInputProviderTest {
       listOf(
           createHeartRate(Instant.parse("2020-01-01T01:00:00Z"), 140),
           createHeartRate(Instant.parse("2020-01-01T01:10:00Z"), 150),
-          createHeartRate(Instant.parse("2020-01-01T01:15:00Z"), 120))
+          createHeartRateActivity(Instant.parse("2020-01-01T01:11:00Z"), 121),
+          createHeartRateTreatments(Instant.parse("2020-01-01T01:12:00Z"), 122),
+          createHeartRate(Instant.parse("2020-01-01T01:15:00Z"), 120),
+      )
     }
     assertEquals(e, ip.getHeartRates(from).blockingGet())
   }

@@ -1,11 +1,13 @@
 package cc.buessow.glumagic.mongodb
 
+import cc.buessow.glumagic.input.DateValue
 import cc.buessow.glumagic.input.InputProvider
 import cc.buessow.glumagic.input.MlProfileSwitch
 import cc.buessow.glumagic.input.MlProfileSwitches
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Sorts
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.rx3.rxMaybe
 import kotlinx.coroutines.rx3.rxSingle
 import org.bson.conversions.Bson
@@ -28,22 +30,29 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
       sort: Bson,
       limit: Int = 0) = query(T::class.java, filter, sort, limit)
 
-  private inline fun <reified T: MongoDateValue> query(
+  private suspend inline fun <reified T: MongoDateValue> query(
       from: Instant,
-      filter: Bson = empty()) = rxSingle {
-        val dateFilter = gte("date", from.toEpochMilli())
-    query<T>(
-        if (filter == empty()) dateFilter else and(dateFilter, filter),
-        Sorts.ascending("date"))
-        .map { t -> t.toDateValue() }
-        .toList()
+      filter: Bson = empty(),
+      dateColumn: String = "date"): List<DateValue> {
+        val dateFilter = gte(dateColumn, from.toEpochMilli())
+      return query<T>(
+          if (filter == empty()) dateFilter else and(dateFilter, filter),
+          Sorts.ascending(dateColumn))
+          .map { t -> t.toDateValue() }
+          .toList()
   }
 
-  override fun getGlucoseReadings(from: Instant) =
-    query<MongoGlucose>(from)
+  override fun getGlucoseReadings(from: Instant) = rxSingle {
+    query<MongoGlucose>(from) }
 
-  override fun getHeartRates(from: Instant) =
-    query<MongoHeartRate>(from)
+  override fun getHeartRates(from: Instant) = rxSingle {
+    val eventFilter = eq("eventType", "HeartRate")
+    val hr1 = async { query<MongoHeartRate>(from) }
+    val hr2 = async { query<MongoHeartRateActivity>(from, eventFilter, "samplingStart") }
+    val hr3 = async { query<MongoHeartRateTreatment>(from, eventFilter, "samplingStart") }
+
+    awaitAll(hr1, hr2, hr3).flatten().sortedBy { it.timestamp }
+  }
 
   override fun getCarbs(from: Instant) = rxSingle {
     query<MongoCarbs>(
