@@ -3,7 +3,7 @@ package cc.buessow.glumagic.predictor
 import cc.buessow.glumagic.input.ArrayApproxCompare
 import cc.buessow.glumagic.input.Config
 import cc.buessow.glumagic.input.DataLoader
-import cc.buessow.glumagic.input.DataProviderForTestData
+import cc.buessow.glumagic.input.InputProviderForTestInput
 import java.util.logging.Logger
 
 class ModelVerifier(private val predictor: Predictor) {
@@ -11,7 +11,7 @@ class ModelVerifier(private val predictor: Predictor) {
 
   private fun runInput(testData: Config.TestData): Boolean {
     log.info("input ${testData.name}")
-    val dataProvider = DataProviderForTestData(testData)
+    val dataProvider = InputProviderForTestInput(testData)
     val dataLoader = DataLoader(dataProvider, testData.at, predictor.config)
     val mismatch = ArrayApproxCompare.getMismatch(
         dataLoader.getInputVector(testData.at).blockingGet().second.toList(),
@@ -33,7 +33,7 @@ class ModelVerifier(private val predictor: Predictor) {
 
   private fun runGlucose(testData: Config.TestData): Boolean {
     log.info("glucose ${testData.name}")
-    val dataProvider = DataProviderForTestData(testData)
+    val dataProvider = InputProviderForTestInput(testData)
     val glucose = predictor.predictGlucose(testData.at, dataProvider)
     val mismatch = ArrayApproxCompare.getMismatch(
         glucose.map(Double::toFloat),

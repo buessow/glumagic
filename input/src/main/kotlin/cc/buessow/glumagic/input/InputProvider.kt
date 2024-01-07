@@ -5,7 +5,7 @@ import io.reactivex.rxjava3.core.Single
 import java.time.Duration
 import java.time.Instant
 
-interface DataProvider {
+interface InputProvider {
   fun getGlucoseReadings(from: Instant): Single<List<DateValue>>
   fun getHeartRates(from: Instant): Single<List<DateValue>>
   fun getCarbs(from: Instant): Single<List<DateValue>>

@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import java.util.*
 
 plugins {
     id("com.android.library")
@@ -8,6 +9,9 @@ plugins {
 
 group = "cc.buessow.glumagic"
 version = "1.0"
+
+val localProperties = Properties()
+File(rootProject.projectDir, "local.properties").inputStream().use { localProperties.load(it) }
 
 android {
   namespace = "cc.buessow.glumagic"
@@ -23,16 +27,24 @@ android {
     unitTests {
       isReturnDefaultValues = true
       isIncludeAndroidResources = true
+      isIncludeAndroidResources = false
     }
     android {
-
     }
   }
+  buildFeatures.buildConfig = true
   defaultConfig {
     multiDexEnabled = true
     minSdk = 30
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     setProperty("archivesBaseName", "cc.buessow.glumagic.predictor-1.0")
+
+    localProperties.entries
+        .map { (k, v) -> k.toString() to v.toString() }
+        .filter { (k, _) -> k.startsWith("mongo.") }
+        .forEach { (k, v) ->
+          buildConfigField("String", k.replace('.', '_').uppercase(), v)
+    }
   }
   packaging {
     resources {
@@ -40,14 +52,13 @@ android {
       excludes += "META-INF/COPYRIGHT"
       excludes += "META-INF/LICENSE.md"
       excludes += "META-INF/LICENSE-notice.md"
+      excludes += "META-INF/native-image/org.mongodb/bson/native-image.properties"
     }
   }
 }
 
 tasks.withType<Test> {
-  // use to display stdout in travis
   testLogging {
-    // set options for log level LIFECYCLE
     events = setOf(
         TestLogEvent.FAILED,
         TestLogEvent.STARTED,
@@ -61,6 +72,7 @@ tasks.withType<Test> {
 
 dependencies {
   implementation(project(":input"))
+  implementation(project(":mongodb"))
   implementation(libs.reactivex)
   implementation(libs.tensorflowLite)
   testImplementation(testLibs.bundles.base)

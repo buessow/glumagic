@@ -75,7 +75,7 @@ class DataLoaderTest {
 
   @Test
   fun loadGlucoseReadings_empty() {
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getGlucoseReadings(any()) }.thenReturn(Single.just(emptyList()))
     }
     val dataLoader = DataLoader(dp, now, config)
@@ -86,7 +86,7 @@ class DataLoaderTest {
 
   @Test
   fun loadGlucoseReadings() {
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getGlucoseReadings(any()) }.thenReturn(
           Single.just(
               listOf(
@@ -104,7 +104,7 @@ class DataLoaderTest {
 
   @Test
   fun loadHeartRates_empty() {
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getHeartRates(any()) }.thenReturn(Single.just(emptyList()))
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
@@ -115,7 +115,7 @@ class DataLoaderTest {
 
   @Test
   fun loadHeartRates() {
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getHeartRates(any()) }.thenReturn(
           Single.just(
               listOf(
@@ -135,7 +135,7 @@ class DataLoaderTest {
 
   @Test
   fun loadLongHeartRates() {
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getLongHeartRates(any(), any(), any()) }.thenReturn(Single.just(listOf(4, 5)))
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
@@ -148,7 +148,7 @@ class DataLoaderTest {
 
   @Test
   fun loadCarbs_empty() {
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getCarbs(any()) }.thenReturn(Single.just(emptyList()))
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
@@ -159,7 +159,7 @@ class DataLoaderTest {
 
   @Test
   fun loadCarbs() {
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getCarbs(any()) }.thenReturn(
           Single.just(
               listOf(
@@ -189,7 +189,7 @@ class DataLoaderTest {
 
   @Test
   fun loadInsulinAction() {
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getBoluses(any()) }.thenReturn(
           Single.just(
               listOf(
@@ -230,7 +230,7 @@ class DataLoaderTest {
         )
     )
 
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getBasalProfileSwitches(any()) }.thenReturn(
           Maybe.just(MlProfileSwitches(bps, bps, emptyList()))
       )
@@ -264,7 +264,7 @@ class DataLoaderTest {
         )
     )
 
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getBasalProfileSwitches(any()) }.thenReturn(
           Maybe.just(MlProfileSwitches(bps, bps, emptyList()))
       )
@@ -308,7 +308,7 @@ class DataLoaderTest {
         )
     )
 
-    val dp = mock<DataProvider> {
+    val dp = mock<InputProvider> {
       on { getBasalProfileSwitches(any()) }.thenReturn(
           Maybe.just(MlProfileSwitches(bps, bps, emptyList()))
       )

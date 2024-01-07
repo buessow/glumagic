@@ -6,7 +6,7 @@ import java.time.ZoneOffset.UTC
 import java.time.temporal.ChronoUnit
 
 class DataLoader(
-    private val dataProvider: DataProvider,
+    private val inputProvider: InputProvider,
     time: Instant,
     private val config: Config,
     private val tz: ZoneOffset = UTC) {
@@ -111,14 +111,14 @@ class DataLoader(
 
   fun loadGlucoseReadings(): Single<List<Float>> {
     val loadFrom: Instant = inputFrom - Duration.ofMinutes(6)
-    return dataProvider.getGlucoseReadings(
+    return inputProvider.getGlucoseReadings(
         (loadFrom)
     ).map { gs -> align(inputFrom, gs, inputFrom + config.trainingPeriod, config.freq).toList() }
   }
 
   fun loadHeartRates(): Single<List<Float>> {
     val loadFrom: Instant = inputFrom - Duration.ofMinutes(6)
-    return dataProvider.getHeartRates(loadFrom).map { hrs ->
+    return inputProvider.getHeartRates(loadFrom).map { hrs ->
       val futureHeartRates = FloatArray(config.predictionPeriod / config.freq) { 60F }
       listOf(
           align(inputFrom, hrs, inputFrom + config.trainingPeriod, config.freq).toList(),
@@ -166,13 +166,13 @@ class DataLoader(
 
   fun loadBasalRates(): Single<List<DateValue>> {
     val default = listOf(DateValue(inputFrom, 0.0))
-    val basalsM = dataProvider.getBasalProfileSwitches(inputFrom).map { bpss ->
+    val basalsM = inputProvider.getBasalProfileSwitches(inputFrom).map { bpss ->
       bpss.toBasal(inputFrom.atOffset(tz), inputUpTo.atOffset(tz))
           .toList()
           .takeUnless(List<DateValue>::isEmpty) ?: default
     }
     val basals = basalsM.defaultIfEmpty(default)
-    val tempBasals = dataProvider.getTemporaryBasalRates(inputFrom)
+    val tempBasals = inputProvider.getTemporaryBasalRates(inputFrom)
     return Single.zip(basals, tempBasals) { b, t ->
       adjustRates(applyTemporaryBasals(b, t, inputUpTo))
     }
@@ -186,7 +186,7 @@ class DataLoader(
     }
 
   fun loadLongHeartRates(): Single<List<Float>> {
-    return dataProvider
+    return inputProvider
         .getLongHeartRates(
             inputFrom + config.trainingPeriod,
             config.hrHighThreshold,
@@ -196,13 +196,13 @@ class DataLoader(
   }
 
   fun loadCarbAction(): Single<List<Float>> {
-    return dataProvider.getCarbs(inputFrom - carbAction.maxAge).map { cs ->
+    return inputProvider.getCarbs(inputFrom - carbAction.maxAge).map { cs ->
       carbAction.valuesAt(cs, intervals).map(Double::toFloat)
     }
   }
 
   fun loadInsulinAction(): Single<List<Float>> {
-    return dataProvider.getBoluses(inputFrom - carbAction.maxAge).map { cs ->
+    return inputProvider.getBoluses(inputFrom - carbAction.maxAge).map { cs ->
       insulinAction.valuesAt(cs, intervals).map(Double::toFloat)
     }
   }

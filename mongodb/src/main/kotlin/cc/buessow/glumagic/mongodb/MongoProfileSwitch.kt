@@ -6,8 +6,10 @@ import org.bson.codecs.pojo.annotations.BsonProperty
 import java.time.Duration
 import java.time.Instant
 
+@MongoCollection("treatments")
 internal data class MongoProfileSwitch(
-    @BsonProperty("created_at") val createdAt: String,
+    @BsonProperty("created_at") val createdAt: String?,
+    val date: Long?,
     val originalProfileName: String?,
     val originalDuration: Long?,
     val originalPercentage: Int?,
@@ -28,7 +30,8 @@ internal data class MongoProfileSwitch(
       p - b.duration to b.value }
   }
 
-  private val created: Instant get() = Instant.parse(createdAt)
+  private val created: Instant get() =
+    date?.let { Instant.ofEpochMilli(it) } ?: Instant.parse(createdAt!!)
 
   fun toMlProfileSwitch() = MlProfileSwitch(
       name = originalProfileName,

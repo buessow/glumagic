@@ -8,7 +8,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-class DataProviderWithCache(private val base: DataProvider) : DataProvider by base {
+class InputProviderWithCache(private val base: InputProvider) : InputProvider by base {
 
   private val lock = ReentrantReadWriteLock()
   private val cache = mutableMapOf<String, Int>()

@@ -12,6 +12,7 @@ class MongoProfileSwitchTest {
   fun toMlProfileSwitch_noBasal() {
     val mps = MongoProfileSwitch(
         "2020-01-01T00:00:00Z",
+        date = null,
         "name",
         Duration.ofMinutes(10).toMillis(),
         110,
@@ -29,6 +30,7 @@ class MongoProfileSwitchTest {
   fun toMlProfileSwitch() {
     val mps = MongoProfileSwitch(
         "2020-01-01T00:00:00Z",
+        null,
         "name",
         Duration.ofMinutes(10).toMillis(),
         110,

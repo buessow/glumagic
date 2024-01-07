@@ -5,7 +5,7 @@ import io.reactivex.rxjava3.core.Single
 import java.time.Duration
 import java.time.Instant
 
-class DataProviderForTestData(private val testData: Config.TestData) : DataProvider {
+class InputProviderForTestInput(private val testData: Config.TestData) : InputProvider {
   private val input = testData.inputData
 
   private fun toDateValue(m: Int, v: Double) =

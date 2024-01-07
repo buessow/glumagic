@@ -1,11 +1,18 @@
 package cc.buessow.glumagic.mongodb
 
 import cc.buessow.glumagic.input.DateValue
+import com.google.gson.annotations.SerializedName
 import org.bson.codecs.pojo.annotations.BsonProperty
 import java.time.Instant
 
+@MongoCollection("treatments")
 internal data class MongoBolus(
-    @BsonProperty("created_at") val createdAt:
-    String, val insulin: Double) {
-  fun toDateValue() = DateValue(Instant.parse(createdAt), insulin)
+    @SerializedName("created_at") @BsonProperty("created_at") val createdAt: String?,
+    val date: Long? = null,
+    val insulin: Double) {
+
+  private val created: Instant get() =
+    date?.let { Instant.ofEpochMilli(it) } ?: Instant.parse(createdAt!!)
+
+  fun toDateValue() = DateValue(created, insulin)
 }

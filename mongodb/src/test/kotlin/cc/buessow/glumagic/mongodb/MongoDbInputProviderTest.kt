@@ -86,7 +86,7 @@ class MongoDbInputProviderTest {
 
   private suspend fun createCarbs(timestamp: Instant, value: Int): DateValue {
     db.getCollection<MongoCarbs>("treatments").insertOne(
-        MongoCarbs(timestamp.toString(), value))
+        MongoCarbs(timestamp.toString(), carbs = value))
     return DateValue(timestamp, value.toDouble())
   }
 
@@ -104,7 +104,7 @@ class MongoDbInputProviderTest {
 
   private suspend fun createBolus(timestamp: Instant, value: Double): DateValue {
     db.getCollection<MongoBolus>("treatments").insertOne(
-        MongoBolus(timestamp.toString(), value))
+        MongoBolus(timestamp.toString(), insulin = value))
     return DateValue(timestamp, value)
   }
 
@@ -124,6 +124,7 @@ class MongoDbInputProviderTest {
     db.getCollection<MongoProfileSwitch>("treatments").insertOne(
         MongoProfileSwitch(
             timestamp.toString(),
+            null,
             "test",
             duration?.toMillis(),
             rate?.times(100.0)?.toInt(),
@@ -202,6 +203,7 @@ class MongoDbInputProviderTest {
     db.getCollection<MongoTemporaryBasal>("treatments").insertOne(
         MongoTemporaryBasal(
             timestamp.toString(),
+            null,
             duration?.toMinutes(),
             null,
             rate?.times(100)?.toInt()))

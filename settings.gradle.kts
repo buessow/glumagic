@@ -34,12 +34,15 @@ dependencyResolutionManagement {
         mavenCentral()
     }
     versionCatalogs {
+        val okHttpVersion = "4.12.0"
+
         create("libs") {
             library("gson", "com.google.code.gson:gson:2.8.9")
             library("reactivex", "io.reactivex.rxjava3:rxjava:3.0.4")
             library("mongodb", "org.mongodb:mongodb-driver-kotlin-coroutine:4.11.0")
             library("kotlinx.cli", "org.jetbrains.kotlinx:kotlinx-cli:0.3.6")
             library("kotlinx.coroutines.rx3","org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.3.9")
+            library("okHttp3", "com.squareup.okhttp3:okhttp:$okHttpVersion")
             library("tensorflowLite", "org.tensorflow:tensorflow-lite:2.14.0")
             library("tensorflowLite.support", "org.tensorflow:tensorflow-lite-support:0.4.4")
         }
@@ -47,12 +50,16 @@ dependencyResolutionManagement {
             library("junit", "org.junit.jupiter:junit-jupiter:5.9.1")
             library("mockito", "org.mockito.kotlin:mockito-kotlin:5.1.0")
             library("mongodb.javaServer", "de.bwaldvogel:mongo-java-server:1.44.0")
-            library("androidx.test.junit","androidx.test.ext:junit-ktx:1.1.5")
+            library("androidx.test.annotation", "androidx.test:annotation:1.0.1")
             library("androidx.test.espresso","androidx.test.espresso:espresso-core:3.5.1")
-            library("androidx.test.runner","androidx.test:runner:1.1.5")
+            library("androidx.test.rules", "androidx.test:rules:1.5.0")
+            library("androidx.test.runner","androidx.test:runner:1.5.0")
+            library("androidx.test.junit","androidx.test.ext:junit-ktx:1.1.5")
+            library("okHttp3.mockWebServer", "com.squareup.okhttp3:mockwebserver:$okHttpVersion")
 
             bundle("androidx.test",
-                   listOf("androidx.test.junit", "androidx.test.espresso", "androidx.test.runner"))
+                   listOf("androidx.test.junit", "androidx.test.espresso", "androidx.test.runner",
+                          "androidx.test.rules", "androidx.test.annotation"))
             bundle("base", listOf("junit", "mockito"))
         }
     }
