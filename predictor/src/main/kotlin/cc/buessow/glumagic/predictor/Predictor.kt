@@ -1,10 +1,9 @@
 package cc.buessow.glumagic.predictor
 
-import android.annotation.TargetApi
-import android.os.Build
 import cc.buessow.glumagic.input.Config
 import cc.buessow.glumagic.input.DataLoader
 import cc.buessow.glumagic.input.InputProvider
+import kotlinx.coroutines.runBlocking
 import org.tensorflow.lite.Interpreter
 import java.io.Closeable
 import java.io.File
@@ -21,7 +20,7 @@ class Predictor private constructor(
     private val interpreter: Interpreter) : Closeable {
 
   companion object {
-    private val log = Logger.getLogger(::javaClass.name)
+    private val log = Logger.getLogger(Predictor::javaClass.name)
 
     fun create(
         modelMetaInput: InputStream,
@@ -76,7 +75,7 @@ class Predictor private constructor(
 
   fun predictGlucoseSlopes(at: Instant, dp: InputProvider): List<Double> {
     val dataLoader = DataLoader(dp, at - config.trainingPeriod, config)
-    val (_, input) = dataLoader.getInputVector(at).blockingGet()
+    val (_, input) = runBlocking { dataLoader.getInputVector(at) }
     return predictGlucoseSlopes(input)
   }
   private fun computeGlucose(lastGlucose: Double, slopes: List<Double>): List<Double> {
@@ -87,7 +86,7 @@ class Predictor private constructor(
   fun predictGlucose(at: Instant, dp: InputProvider): List<Double> {
     log.info("Predicting glucose at $at")
     val dataLoader = DataLoader(dp, at, config)
-    val (lastGlucose, input) = dataLoader.getInputVector(at).blockingGet()
+    val (lastGlucose, input) = runBlocking { dataLoader.getInputVector(at) }
     return computeGlucose(lastGlucose.toDouble(), predictGlucoseSlopes(input)).also {
       log.info("Output glucose: ${it.joinToString()}")
     }

@@ -22,6 +22,6 @@ dependencies {
     implementation(project(":input"))
     implementation(project(":mongodb"))
     implementation(libs.kotlinx.cli)
-    implementation(libs.reactivex)
+    implementation(libs.kotlinx.coroutines.core)
     testImplementation(testLibs.junit)
 }

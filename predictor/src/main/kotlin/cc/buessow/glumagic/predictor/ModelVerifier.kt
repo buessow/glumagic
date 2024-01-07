@@ -4,6 +4,7 @@ import cc.buessow.glumagic.input.ArrayApproxCompare
 import cc.buessow.glumagic.input.Config
 import cc.buessow.glumagic.input.DataLoader
 import cc.buessow.glumagic.input.InputProviderForTestInput
+import kotlinx.coroutines.runBlocking
 import java.util.logging.Logger
 
 class ModelVerifier(private val predictor: Predictor) {
@@ -14,7 +15,7 @@ class ModelVerifier(private val predictor: Predictor) {
     val dataProvider = InputProviderForTestInput(testData)
     val dataLoader = DataLoader(dataProvider, testData.at, predictor.config)
     val mismatch = ArrayApproxCompare.getMismatch(
-        dataLoader.getInputVector(testData.at).blockingGet().second.toList(),
+        runBlocking { dataLoader.getInputVector(testData.at) }.second.toList(),
         testData.inputVector.toList(), 1e-4
     ) ?: return true
     log.severe("Mismatch '${testData.name}': $mismatch")

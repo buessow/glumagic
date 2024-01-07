@@ -9,9 +9,8 @@ version = "unspecified"
 dependencies {
     implementation(project(":input"))
     implementation(libs.gson)
-    implementation(libs.kotlinx.coroutines.rx3)
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.mongodb)
-    implementation(libs.reactivex)
     implementation(libs.okHttp3)
 
     testImplementation(testLibs.bundles.base)

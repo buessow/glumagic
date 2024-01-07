@@ -1,6 +1,8 @@
 package cc.buessow.glumagic.input
 
-import io.reactivex.rxjava3.core.Single
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.time.*
 import java.time.ZoneOffset.UTC
 import java.time.temporal.ChronoUnit
@@ -109,16 +111,15 @@ class DataLoader(
     }
   }
 
-  fun loadGlucoseReadings(): Single<List<Float>> {
+  suspend fun loadGlucoseReadings(): List<Float> {
     val loadFrom: Instant = inputFrom - Duration.ofMinutes(6)
-    return inputProvider.getGlucoseReadings(
-        (loadFrom)
-    ).map { gs -> align(inputFrom, gs, inputFrom + config.trainingPeriod, config.freq).toList() }
+    val glucoseReadings = inputProvider.getGlucoseReadings(loadFrom)
+    return align(inputFrom, glucoseReadings, inputFrom + config.trainingPeriod, config.freq).toList()
   }
 
-  fun loadHeartRates(): Single<List<Float>> {
+  suspend fun loadHeartRates(): List<Float> {
     val loadFrom: Instant = inputFrom - Duration.ofMinutes(6)
-    return inputProvider.getHeartRates(loadFrom).map { hrs ->
+    return inputProvider.getHeartRates(loadFrom).let { hrs ->
       val futureHeartRates = FloatArray(config.predictionPeriod / config.freq) { 60F }
       listOf(
           align(inputFrom, hrs, inputFrom + config.trainingPeriod, config.freq).toList(),
@@ -164,45 +165,43 @@ class DataLoader(
     return result
   }
 
-  fun loadBasalRates(): Single<List<DateValue>> {
+  suspend fun loadBasalRates(): List<DateValue> = coroutineScope {
     val default = listOf(DateValue(inputFrom, 0.0))
-    val basalsM = inputProvider.getBasalProfileSwitches(inputFrom).map { bpss ->
-      bpss.toBasal(inputFrom.atOffset(tz), inputUpTo.atOffset(tz))
-          .toList()
-          .takeUnless(List<DateValue>::isEmpty) ?: default
-    }
-    val basals = basalsM.defaultIfEmpty(default)
-    val tempBasals = inputProvider.getTemporaryBasalRates(inputFrom)
-    return Single.zip(basals, tempBasals) { b, t ->
-      adjustRates(applyTemporaryBasals(b, t, inputUpTo))
-    }
+    val basals = async {
+      inputProvider.getBasalProfileSwitches(inputFrom)
+          ?.toBasal(inputFrom.atOffset(tz), inputUpTo.atOffset(tz))
+          ?.toList()
+          ?.takeUnless(List<DateValue>::isEmpty) ?: default
+    }.apply { start() }
+    val tempBasals = async { inputProvider.getTemporaryBasalRates(inputFrom) }.apply { start() }
+    adjustRates(applyTemporaryBasals(basals.await(), tempBasals.await(), inputUpTo))
   }
 
   private val intervals = inputFrom..<inputUpTo step config.freq
 
-  fun loadBasalActions(): Single<List<Float>> =
-    loadBasalRates().map { basals ->
+  suspend fun loadBasalActions(): List<Float> {
+    return loadBasalRates().let { basals ->
       insulinAction.valuesAt(basals, intervals).map(Double::toFloat)
     }
+  }
 
-  fun loadLongHeartRates(): Single<List<Float>> {
+  suspend fun loadLongHeartRates(): List<Float> {
     return inputProvider
         .getLongHeartRates(
             inputFrom + config.trainingPeriod,
             config.hrHighThreshold,
-            config.hrLong
-        )
-        .map { counts -> counts.map(Int::toFloat).toList() }
+            config.hrLong)
+        .map(Int::toFloat).toList()
   }
 
-  fun loadCarbAction(): Single<List<Float>> {
-    return inputProvider.getCarbs(inputFrom - carbAction.maxAge).map { cs ->
+  suspend fun loadCarbAction(): List<Float> {
+    return inputProvider.getCarbs(inputFrom - carbAction.maxAge).let { cs ->
       carbAction.valuesAt(cs, intervals).map(Double::toFloat)
     }
   }
 
-  fun loadInsulinAction(): Single<List<Float>> {
-    return inputProvider.getBoluses(inputFrom - carbAction.maxAge).map { cs ->
+  suspend fun loadInsulinAction(): List<Float> {
+    return inputProvider.getBoluses(inputFrom - carbAction.maxAge).let { cs ->
       insulinAction.valuesAt(cs, intervals).map(Double::toFloat)
     }
   }
@@ -218,28 +217,32 @@ class DataLoader(
     }
   }
 
-  fun getInputVector(at: Instant): Single<Pair<Float, FloatArray>> =
-    Single.zip(
-        loadGlucoseReadings(), loadLongHeartRates(), loadHeartRates(),
-        loadCarbAction(), loadInsulinAction()
-    ) { gl, hrl, hr, ca, ia ->
-
-      val localTime = OffsetDateTime.ofInstant(at, ZoneId.of("UTC"))
-      val glSlope = slope(listOf(gl, listOf(gl.last())).flatten())
-      val glSlop2 = slope(glSlope)
-
-      val input = mutableListOf<Float>()
-      input.add(localTime.hour.toFloat())
-      input.addAll(hrl)
-      input.addAll(glSlope.dropLast(1))
-      input.addAll(glSlop2.dropLast(1))
-      input.addAll(ia)
-      input.addAll(ca)
-      input.addAll(hr)
-
-      assert(input.size == config.inputSize) {
-        "Input size is ${input.size} instead of ${config.inputSize}"
-      }
-      gl.last() to input.toFloatArray()
+  suspend fun getInputVector(at: Instant): Pair<Float, FloatArray> {
+    val (gl, hrl, hr, ca, ia) = coroutineScope {
+      awaitAll(
+          async { loadGlucoseReadings() },
+          async { loadLongHeartRates() },
+          async { loadHeartRates() },
+          async { loadCarbAction() },
+          async { loadInsulinAction() },
+      )
     }
+    val localTime = OffsetDateTime.ofInstant(at, ZoneId.of("UTC"))
+    val glSlope = slope(listOf(gl, listOf(gl.last())).flatten())
+    val glSlop2 = slope(glSlope)
+
+    val input = mutableListOf<Float>()
+    input.add(localTime.hour.toFloat())
+    input.addAll(hrl)
+    input.addAll(glSlope.dropLast(1))
+    input.addAll(glSlop2.dropLast(1))
+    input.addAll(ia)
+    input.addAll(ca)
+    input.addAll(hr)
+
+    assert(input.size == config.inputSize) {
+      "Input size is ${input.size} instead of ${config.inputSize}"
+    }
+    return gl.last() to input.toFloatArray()
+  }
 }

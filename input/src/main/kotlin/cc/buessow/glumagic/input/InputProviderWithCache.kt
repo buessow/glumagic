@@ -1,6 +1,5 @@
 package cc.buessow.glumagic.input
 
-import io.reactivex.rxjava3.core.Single
 import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -15,8 +14,8 @@ class InputProviderWithCache(private val base: InputProvider) : InputProvider by
   private fun key(at: Instant, threshold: Int, duration: Duration) =
     "${at.toEpochMilli()}-$threshold-${duration}"
 
-  override fun getLongHeartRates(
-      at: Instant, threshold: Int, durations: List<Duration>): Single<List<Int>> {
+  override suspend fun getLongHeartRates(
+      at: Instant, threshold: Int, durations: List<Duration>): List<Int> {
     val atHourly = at.truncatedTo(ChronoUnit.HOURS)
     val missing = lock.read {
       durations.filter { d -> cache[key(atHourly, threshold, d)] == null }
@@ -24,15 +23,14 @@ class InputProviderWithCache(private val base: InputProvider) : InputProvider by
     if (missing.isNotEmpty()) {
       lock.write {
         base.getLongHeartRates(atHourly, threshold, missing)
-            .blockingGet()
             .forEachIndexed { i, hr ->
               val key = key(atHourly, threshold, durations[i])
               cache[key] = hr
             }
       }
     }
-    return Single.just(lock.read {
+    return lock.read {
       durations.map { d -> cache[key(atHourly, threshold, d)] ?: 0 }
-    })
+    }
   }
 }

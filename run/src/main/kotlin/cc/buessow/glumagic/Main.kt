@@ -5,24 +5,25 @@ import cc.buessow.glumagic.input.InputProvider
 import cc.buessow.glumagic.mongodb.MongoApiInputProvider
 import cc.buessow.glumagic.mongodb.MongoDbInputProvider
 import kotlinx.cli.*
+import kotlinx.coroutines.runBlocking
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 object Main {
 
-  private fun dump(input: InputProvider) {
-    for (dv in input.getGlucoseReadings(Instant.now().minusSeconds(1800L)).blockingGet()) {
+  private fun dump(input: InputProvider) = runBlocking {
+    for (dv in input.getGlucoseReadings(Instant.now().minusSeconds(1800L))) {
       println("glucose $dv")
     }
-    for (dv in input.getCarbs(Instant.now().minusSeconds(18000L)).blockingGet()) {
+    for (dv in input.getCarbs(Instant.now().minusSeconds(18000L))) {
       println("carbs $dv")
     }
     val bpss = input
-        .getBasalProfileSwitches(Instant.now().minusSeconds(1800L)).blockingGet()
+        .getBasalProfileSwitches(Instant.now().minusSeconds(1800L))
     println("profile switch $bpss")
 
     for (tb in input.getTemporaryBasalRates(Instant.now().minus(2L, ChronoUnit.HOURS))
-        .blockingGet()) {
+        ) {
       println("temp $tb")
     }
   }

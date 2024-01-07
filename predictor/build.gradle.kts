@@ -73,7 +73,7 @@ tasks.withType<Test> {
 dependencies {
   implementation(project(":input"))
   implementation(project(":mongodb"))
-  implementation(libs.reactivex)
+  implementation(libs.kotlinx.coroutines.core)
   implementation(libs.tensorflowLite)
   testImplementation(testLibs.bundles.base)
   androidTestImplementation(testLibs.bundles.androidx.test)

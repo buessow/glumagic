@@ -1,7 +1,5 @@
 package cc.buessow.glumagic.input
 
-import io.reactivex.rxjava3.core.Maybe
-import io.reactivex.rxjava3.core.Single
 import java.time.Duration
 import java.time.Instant
 
@@ -11,21 +9,21 @@ class InputProviderForTestInput(private val testData: Config.TestData) : InputPr
   private fun toDateValue(m: Int, v: Double) =
     DateValue(testData.at + Duration.ofMinutes(m.toLong()), v)
 
-  override fun getGlucoseReadings(from: Instant) = Single.just(
-      input.minute.zip(input.glucose).map { (m, v) -> toDateValue(m, v) })
+  override suspend fun getGlucoseReadings(from: Instant) = 
+      input.minute.zip(input.glucose).map { (m, v) -> toDateValue(m, v) }
 
-  override fun getHeartRates(from: Instant) = Single.just(
-      input.minute.zip(testData.heartRates).map { (m, v) -> toDateValue(m, v) })
+  override suspend fun getHeartRates(from: Instant) =
+      input.minute.zip(testData.heartRates).map { (m, v) -> toDateValue(m, v) }
 
-  override fun getLongHeartRates(at: Instant, threshold: Int, durations: List<Duration>) =
-    Single.just(testData.hrLongCounts)
+  override suspend fun getLongHeartRates(at: Instant, threshold: Int, durations: List<Duration>) =
+    testData.hrLongCounts
 
-  override fun getBasalProfileSwitches(from: Instant): Maybe<MlProfileSwitches> = Maybe.empty()
+  override suspend fun getBasalProfileSwitches(from: Instant): MlProfileSwitches? = null
 
-  override fun getTemporaryBasalRates(from: Instant): Single<List<MlTemporaryBasalRate>> =
-    Single.just(emptyList())
+  override suspend fun getTemporaryBasalRates(from: Instant): List<MlTemporaryBasalRate> =
+    emptyList()
 
-  override fun getCarbs(from: Instant) = Single.just(testData.carbEvents)
+  override suspend fun getCarbs(from: Instant) = testData.carbEvents
 
-  override fun getBoluses(from: Instant) = Single.just(testData.insulinEvents)
+  override suspend fun getBoluses(from: Instant) = testData.insulinEvents
 }

@@ -29,6 +29,6 @@ java {
 
 dependencies {
     implementation(libs.gson)
-    implementation(libs.reactivex)
+    implementation(libs.kotlinx.coroutines.core)
     testImplementation(testLibs.bundles.base)
 }

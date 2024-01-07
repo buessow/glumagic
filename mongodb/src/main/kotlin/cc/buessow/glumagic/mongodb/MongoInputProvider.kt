@@ -1,15 +1,11 @@
 package cc.buessow.glumagic.mongodb
 
-import cc.buessow.glumagic.input.DateValue
-import cc.buessow.glumagic.input.InputProvider
-import cc.buessow.glumagic.input.MlProfileSwitch
-import cc.buessow.glumagic.input.MlProfileSwitches
+import cc.buessow.glumagic.input.*
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Sorts
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.rx3.rxMaybe
-import kotlinx.coroutines.rx3.rxSingle
+import kotlinx.coroutines.coroutineScope
 import org.bson.conversions.Bson
 import java.io.Closeable
 import java.time.Instant
@@ -42,10 +38,10 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
           .toList()
   }
 
-  override fun getGlucoseReadings(from: Instant) = rxSingle {
-    query<MongoGlucose>(from) }
+  override suspend fun getGlucoseReadings(from: Instant): List<DateValue> {
+    return query<MongoGlucose>(from) }
 
-  override fun getHeartRates(from: Instant) = rxSingle {
+  override suspend fun getHeartRates(from: Instant): List<DateValue> = coroutineScope {
     val eventFilter = eq("eventType", "HeartRate")
     val hr1 = async { query<MongoHeartRate>(from) }
     val hr2 = async { query<MongoHeartRateActivity>(from, eventFilter, "samplingStart") }
@@ -54,16 +50,16 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
     awaitAll(hr1, hr2, hr3).flatten().sortedBy { it.timestamp }
   }
 
-  override fun getCarbs(from: Instant) = rxSingle {
-    query<MongoCarbs>(
+  override suspend fun getCarbs(from: Instant): List<DateValue> {
+    return query<MongoCarbs>(
         and(gte("created_at", from.toString()), ne("carbs", null)),
         Sorts.ascending("created_at"))
         .map(MongoCarbs::toDateValue)
         .toList()
   }
 
-  override fun getBoluses(from: Instant) = rxSingle {
-    query<MongoBolus>(
+  override suspend fun getBoluses(from: Instant): List<DateValue> {
+    return query<MongoBolus>(
         and(gte("created_at", from.toString()), ne("insulin", null)),
         Sorts.ascending("created_at"))
         .map(MongoBolus::toDateValue)
@@ -82,7 +78,7 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
         limit).map(MongoProfileSwitch::toMlProfileSwitch).toList()
   }
 
-  override fun getBasalProfileSwitches(from: Instant) = rxMaybe<MlProfileSwitches> {
+  override suspend fun getBasalProfileSwitches(from: Instant): MlProfileSwitches? = coroutineScope {
     val pa = async {
       val active = queryProfileSwitches(
           lte("created_at", from.toString()),
@@ -102,15 +98,15 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
       permanent to (active.takeIf { a -> a.start.plus(duration) > from } ?:permanent)
     }.apply { start() }
 
-    val switches = queryProfileSwitches(
+    val switches = async { queryProfileSwitches(
           gte("created_at", from.toString()),
-          Sorts.ascending("created_at"))
-    val (permanent, active) = pa.await() ?: return@rxMaybe null
-    MlProfileSwitches(permanent, active, switches)
+          Sorts.ascending("created_at")) }.apply { start() }
+    val (permanent, active) = pa.await() ?: return@coroutineScope null
+    MlProfileSwitches(permanent, active, switches.await())
   }
 
-  override fun getTemporaryBasalRates(from: Instant) = rxSingle {
-    query<MongoTemporaryBasal>(
+  override suspend fun getTemporaryBasalRates(from: Instant): List<MlTemporaryBasalRate> {
+    return query<MongoTemporaryBasal>(
         and(gte("created_at", from.toString()),
             `in`("eventType", "Temp Basal")),
         Sorts.ascending("created_at"))

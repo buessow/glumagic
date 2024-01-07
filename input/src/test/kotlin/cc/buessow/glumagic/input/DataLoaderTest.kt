@@ -1,7 +1,6 @@
 package cc.buessow.glumagic.input
 
-import io.reactivex.rxjava3.core.Maybe
-import io.reactivex.rxjava3.core.Single
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -74,103 +73,103 @@ class DataLoaderTest {
   }
 
   @Test
-  fun loadGlucoseReadings_empty() {
+  fun loadGlucoseReadings_empty() = runBlocking {
     val dp = mock<InputProvider> {
-      on { getGlucoseReadings(any()) }.thenReturn(Single.just(emptyList()))
+      onBlocking { getGlucoseReadings(any()) }.thenReturn(emptyList())
     }
     val dataLoader = DataLoader(dp, now, config)
-    val values = dataLoader.loadGlucoseReadings().blockingGet()
+    val values = dataLoader.loadGlucoseReadings()
     assertCollectionEqualsF(values, *FloatArray(6) { Float.NaN }, eps = 1e-2)
     verify(dp).getGlucoseReadings((now - ofMinutes(6)))
+    Unit
   }
 
   @Test
-  fun loadGlucoseReadings() {
+  fun loadGlucoseReadings() = runBlocking {
     val dp = mock<InputProvider> {
-      on { getGlucoseReadings(any()) }.thenReturn(
-          Single.just(
+      onBlocking { getGlucoseReadings(any()) }.thenReturn(
               listOf(
                   DateValue(Instant.parse("2013-12-13T19:35:00Z"), 80.0),
                   DateValue(Instant.parse("2013-12-13T19:40:00Z"), 120.0),
               )
-          )
       )
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
-    val values = dataLoader.loadGlucoseReadings().blockingGet()
+    val values = dataLoader.loadGlucoseReadings()
     assertCollectionEqualsF(values, Float.NaN, 80F, 120F, 120F, 120F, 120F, eps = 1e-2)
     verify(dp).getGlucoseReadings(Instant.parse("2013-12-13T19:24:00Z"))
+    Unit
   }
 
   @Test
-  fun loadHeartRates_empty() {
+  fun loadHeartRates_empty() = runBlocking {
     val dp = mock<InputProvider> {
-      on { getHeartRates(any()) }.thenReturn(Single.just(emptyList()))
+      onBlocking { getHeartRates(any()) }.thenReturn(emptyList())
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
-    val values = dataLoader.loadHeartRates().blockingGet()
+    val values = dataLoader.loadHeartRates()
     assertCollectionEqualsF(values, *FloatArray(6) { Float.NaN }, 60.0F, 60.0F, 60.0F, eps = 1e-2)
     verify(dp).getHeartRates(Instant.parse("2013-12-13T19:24:00Z"))
+    Unit
   }
 
   @Test
-  fun loadHeartRates() {
+  fun loadHeartRates() = runBlocking {
     val dp = mock<InputProvider> {
-      on { getHeartRates(any()) }.thenReturn(
-          Single.just(
+      onBlocking { getHeartRates(any()) }.thenReturn(
               listOf(
                   DateValue(Instant.parse("2013-12-13T19:35:00Z"), 80.0),
                   DateValue(Instant.parse("2013-12-13T19:40:00Z"), 120.0),
               )
-          )
       )
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
-    val values = dataLoader.loadHeartRates().blockingGet()
+    val values = dataLoader.loadHeartRates()
     assertCollectionEqualsF(
         values, Float.NaN, 80F, 120F, 120F, 120F, 120F, 60.0F, 60.0F, 60.0F, eps = 1e-2
     )
     verify(dp).getHeartRates(Instant.parse("2013-12-13T19:24:00Z"))
+    Unit
   }
 
   @Test
-  fun loadLongHeartRates() {
+  fun loadLongHeartRates() = runBlocking {
     val dp = mock<InputProvider> {
-      on { getLongHeartRates(any(), any(), any()) }.thenReturn(Single.just(listOf(4, 5)))
+      onBlocking { getLongHeartRates(any(), any(), any()) }.thenReturn(listOf(4, 5))
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
-    val values = dataLoader.loadLongHeartRates().blockingGet()
+    val values = dataLoader.loadLongHeartRates()
     assertCollectionEqualsF(values, 4F, 5F, eps = 1e-2)
     verify(dp).getLongHeartRates(
         Instant.parse("2013-12-13T20:00:00Z"), 120, config.hrLong
     )
+    Unit
   }
 
   @Test
-  fun loadCarbs_empty() {
+  fun loadCarbs_empty() = runBlocking {
     val dp = mock<InputProvider> {
-      on { getCarbs(any()) }.thenReturn(Single.just(emptyList()))
+      onBlocking { getCarbs(any()) }.thenReturn(emptyList())
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
-    val values = dataLoader.loadCarbAction().blockingGet()
+    val values = dataLoader.loadCarbAction()
     assertCollectionEqualsF(values, *FloatArray(9) { 0F }, eps = 1e-2)
     verify(dp).getCarbs(Instant.parse("2013-12-13T15:30:00Z"))
+    Unit
   }
 
   @Test
-  fun loadCarbs() {
+  fun loadCarbs() = runBlocking {
     val dp = mock<InputProvider> {
-      on { getCarbs(any()) }.thenReturn(
-          Single.just(
-              listOf(
-                  DateValue(Instant.parse("2013-12-13T18:00:00Z"), 80.0),
-                  DateValue(Instant.parse("2013-12-13T19:15:00Z"), 120.0),
-              )
+      onBlocking { getCarbs(any()) }.thenReturn(
+          listOf(
+              DateValue(Instant.parse("2013-12-13T18:00:00Z"), 80.0),
+              DateValue(Instant.parse("2013-12-13T19:15:00Z"), 120.0),
           )
       )
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
-    val values = dataLoader.loadCarbAction().blockingGet()
+    val values = dataLoader.loadCarbAction()
     assertCollectionEqualsF(
         values,
         38.811302F,
@@ -185,22 +184,21 @@ class DataLoaderTest {
         eps = 1e-2
     )
     verify(dp).getCarbs(Instant.parse("2013-12-13T15:30:00Z"))
+    return@runBlocking
   }
 
   @Test
-  fun loadInsulinAction() {
+  fun loadInsulinAction() = runBlocking {
     val dp = mock<InputProvider> {
-      on { getBoluses(any()) }.thenReturn(
-          Single.just(
+      onBlocking { getBoluses(any()) }.thenReturn(
               listOf(
                   DateValue(Instant.parse("2013-12-13T18:00:00Z"), 80.0),
                   DateValue(Instant.parse("2013-12-13T19:15:00Z"), 120.0),
               )
-          )
       )
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
-    val values = dataLoader.loadInsulinAction().blockingGet()
+    val values = dataLoader.loadInsulinAction()
     assertCollectionEqualsF(
         values,
         42.355312F,
@@ -215,10 +213,11 @@ class DataLoaderTest {
         eps = 1e-3
     )
     verify(dp).getBoluses(Instant.parse("2013-12-13T15:30:00Z"))
+    return@runBlocking
   }
 
   @Test
-  fun loadBasalRates_noTemp() {
+  fun loadBasalRates_noTemp() = runBlocking {
     val now = Instant.parse("2013-12-13T00:00:00Z")
     val bps = MlProfileSwitch(
         "test",
@@ -231,14 +230,13 @@ class DataLoaderTest {
     )
 
     val dp = mock<InputProvider> {
-      on { getBasalProfileSwitches(any()) }.thenReturn(
-          Maybe.just(MlProfileSwitches(bps, bps, emptyList()))
-      )
-      on { getTemporaryBasalRates(any()) }.thenReturn(Single.just(emptyList()))
+      onBlocking { getBasalProfileSwitches(any()) }.thenReturn(
+          MlProfileSwitches(bps, bps, emptyList()))
+      onBlocking { getTemporaryBasalRates(any()) }.thenReturn(emptyList())
     }
     val dataLoader = DataLoader(dp, now, config)
     assertCollectionEquals(
-        dataLoader.loadBasalRates().blockingGet(),
+        dataLoader.loadBasalRates(),
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0),
         DateValue(Instant.parse("2013-12-13T00:05:00Z"), 2.0),
         DateValue(Instant.parse("2013-12-13T00:10:00Z"), 2.0),
@@ -249,10 +247,11 @@ class DataLoaderTest {
         DateValue(Instant.parse("2013-12-13T00:35:00Z"), 3.0),
         DateValue(Instant.parse("2013-12-13T00:40:00Z"), 3.0),
     )
+    return@runBlocking
   }
 
   @Test
-  fun loadBasalRates_withTemp() {
+  fun loadBasalRates_withTemp() = runBlocking {
     val now = Instant.parse("2013-12-13T00:00:00Z")
     val bps = MlProfileSwitch(
         "test",
@@ -265,24 +264,22 @@ class DataLoaderTest {
     )
 
     val dp = mock<InputProvider> {
-      on { getBasalProfileSwitches(any()) }.thenReturn(
-          Maybe.just(MlProfileSwitches(bps, bps, emptyList()))
+      onBlocking { getBasalProfileSwitches(any()) }.thenReturn(
+          MlProfileSwitches(bps, bps, emptyList())
       )
-      on { getTemporaryBasalRates(any()) }.thenReturn(
-          Single.just(
-              listOf(
-                  MlTemporaryBasalRate(
-                      Instant.parse("2013-12-13T00:10:00Z"),
-                      ofMinutes(10),
-                      1.1
-                  )
+      onBlocking { getTemporaryBasalRates(any()) }.thenReturn(
+          listOf(
+              MlTemporaryBasalRate(
+                  Instant.parse("2013-12-13T00:10:00Z"),
+                  ofMinutes(10),
+                  1.1
               )
           )
       )
     }
     val dataLoader = DataLoader(dp, now, config)
     assertCollectionEquals(
-        dataLoader.loadBasalRates().blockingGet(),
+        dataLoader.loadBasalRates(),
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0),
         DateValue(Instant.parse("2013-12-13T00:05:00Z"), 2.0),
         DateValue(Instant.parse("2013-12-13T00:10:00Z"), 2.2),
@@ -296,7 +293,7 @@ class DataLoaderTest {
   }
 
   @Test
-  fun loadBasalRates_multipleBasalPer5Minutes() {
+  fun loadBasalRates_multipleBasalPer5Minutes() = runBlocking {
     val now = Instant.parse("2013-12-13T00:00:00Z")
     val bps = MlProfileSwitch(
         "test",
@@ -309,14 +306,13 @@ class DataLoaderTest {
     )
 
     val dp = mock<InputProvider> {
-      on { getBasalProfileSwitches(any()) }.thenReturn(
-          Maybe.just(MlProfileSwitches(bps, bps, emptyList()))
-      )
-      on { getTemporaryBasalRates(any()) }.thenReturn(Single.just(emptyList()))
+      onBlocking { getBasalProfileSwitches(any()) }.thenReturn(
+          MlProfileSwitches(bps, bps, emptyList()))
+      onBlocking { getTemporaryBasalRates(any()) }.thenReturn(emptyList())
     }
     val dataLoader = DataLoader(dp, now, config)
     assertCollectionEquals(
-        dataLoader.loadBasalRates().blockingGet(),
+        dataLoader.loadBasalRates(),
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0 + 4 * 2.0),
         DateValue(Instant.parse("2013-12-13T00:05:00Z"), 2 * 2.0 + 3 * 3.0),
         DateValue(Instant.parse("2013-12-13T00:10:00Z"), 5 * 3.0),
@@ -330,7 +326,7 @@ class DataLoaderTest {
   }
 
   @Test
-  fun applyTemporaryBasals_noTemp() {
+  fun applyTemporaryBasals_noTemp() = runBlocking {
     val basals = listOf(
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0),
         DateValue(Instant.parse("2013-12-13T01:00:00Z"), 2.0),
@@ -357,10 +353,11 @@ class DataLoaderTest {
         DateValue(Instant.parse("2013-12-13T01:00:00Z"), 2.0),
         DateValue(Instant.parse("2013-12-13T02:00:00Z"), 3.0)
     )
+    return@runBlocking
   }
 
   @Test
-  fun applyTemporaryBasals_temps() {
+  fun applyTemporaryBasals_temps() = runBlocking {
     val basals = listOf(
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 0.5),
         DateValue(Instant.parse("2013-12-13T00:05:00Z"), 1.0),
@@ -388,7 +385,7 @@ class DataLoaderTest {
   }
 
   @Test
-  fun applyTemporaryBasals_multipleTempsPerBasal() {
+  fun applyTemporaryBasals_multipleTempsPerBasal() = runBlocking {
     val basals = listOf(
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0),
         DateValue(Instant.parse("2013-12-13T01:00:00Z"), 2.0),

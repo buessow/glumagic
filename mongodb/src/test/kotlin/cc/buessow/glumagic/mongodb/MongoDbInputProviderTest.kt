@@ -44,8 +44,8 @@ class MongoDbInputProviderTest {
   }
 
   @Test
-  fun getGlucoseReadings_empty() {
-    assertEquals(emptyList<DateValue>(), ip.getGlucoseReadings(from).blockingGet())
+  fun getGlucoseReadings_empty() = runBlocking {
+    assertEquals(emptyList<DateValue>(), ip.getGlucoseReadings(from))
   }
 
   private suspend fun createGlucose(timestamp: Instant, value: Int): DateValue {
@@ -55,7 +55,7 @@ class MongoDbInputProviderTest {
   }
 
   @Test
-  fun getGlucoseReadings() {
+  fun getGlucoseReadings() = runBlocking {
     val e  = runBlocking {
       createGlucose(Instant.parse("2019-01-01T01:00:00Z"), 100)
       listOf(
@@ -63,7 +63,7 @@ class MongoDbInputProviderTest {
           createGlucose(Instant.parse("2020-01-01T01:10:00Z"), 150),
           createGlucose(Instant.parse("2020-01-01T01:15:00Z"), 120))
     }
-    assertEquals(e, ip.getGlucoseReadings(from).blockingGet())
+    assertEquals(e, ip.getGlucoseReadings(from))
   }
 
   private suspend fun createHeartRate(timestamp: Instant, value: Int): DateValue {
@@ -85,7 +85,7 @@ class MongoDbInputProviderTest {
   }
 
   @Test
-  fun getHeartRates() {
+  fun getHeartRates() = runBlocking {
     val e = runBlocking {
       createHeartRate(Instant.parse("2019-01-01T01:00:00Z"), 100)
       listOf(
@@ -96,7 +96,7 @@ class MongoDbInputProviderTest {
           createHeartRate(Instant.parse("2020-01-01T01:15:00Z"), 120),
       )
     }
-    assertEquals(e, ip.getHeartRates(from).blockingGet())
+    assertEquals(e, ip.getHeartRates(from))
   }
 
   private suspend fun createCarbs(timestamp: Instant, value: Int): DateValue {
@@ -106,7 +106,7 @@ class MongoDbInputProviderTest {
   }
 
   @Test
-  fun getCarbs() {
+  fun getCarbs() = runBlocking {
     val e = runBlocking {
       createCarbs(Instant.parse("2019-01-01T01:00:00Z"), 100)
       listOf(
@@ -114,7 +114,7 @@ class MongoDbInputProviderTest {
           createCarbs(Instant.parse("2020-01-01T01:10:00Z"), 150),
           createCarbs(Instant.parse("2020-01-01T01:15:00Z"), 120))
     }
-    assertEquals(e, ip.getCarbs(from).blockingGet())
+    assertEquals(e, ip.getCarbs(from))
   }
 
   private suspend fun createBolus(timestamp: Instant, value: Double): DateValue {
@@ -124,7 +124,7 @@ class MongoDbInputProviderTest {
   }
 
   @Test
-  fun getBoluses() {
+  fun getBoluses() = runBlocking {
     val e = runBlocking {
       createBolus(Instant.parse("2019-01-01T01:00:00Z"), 1.0)
       listOf(
@@ -132,7 +132,7 @@ class MongoDbInputProviderTest {
           createBolus(Instant.parse("2020-01-01T01:10:00Z"), 1.5),
           createBolus(Instant.parse("2020-01-01T01:15:00Z"), 1.2))
     }
-    assertEquals(e, ip.getBoluses(from).blockingGet())
+    assertEquals(e, ip.getBoluses(from))
   }
 
   private suspend fun createProfileSwitch(timestamp: Instant, duration: Duration?, rate: Double?): MlProfileSwitch {
@@ -153,37 +153,37 @@ class MongoDbInputProviderTest {
   }
 
   @Test
-  fun getProfileSwitches_empty() {
+  fun getProfileSwitches_empty() = runBlocking {
     runBlocking {
       createProfileSwitch(Instant.parse("2020-01-01T02:00:00Z"), null, 1.1)
     }
-    assertNull(ip.getBasalProfileSwitches(from).blockingGet())
+    assertNull(ip.getBasalProfileSwitches(from))
   }
 
   @Test
-  fun getProfileSwitches_onlyTemp() {
+  fun getProfileSwitches_onlyTemp() = runBlocking {
     runBlocking {
       createProfileSwitch(
           Instant.parse("2019-12-31T01:00:00Z"), Duration.ofDays(1), 1.1)
       createProfileSwitch(Instant.parse("2020-01-01T02:00:00Z"), null, 1.2)
     }
-    assertNull(ip.getBasalProfileSwitches(from).blockingGet())
+    assertNull(ip.getBasalProfileSwitches(from))
   }
 
 
   @Test
-  fun getProfileSwitches_one() {
+  fun getProfileSwitches_one() = runBlocking {
     val ps1: MlProfileSwitch
     runBlocking {
       ps1 = createProfileSwitch(Instant.parse("2019-12-01T01:00:00Z"), null, 1.1)
     }
     assertEquals(
         MlProfileSwitches(ps1, ps1, emptyList()),
-        ip.getBasalProfileSwitches(from).blockingGet())
+        ip.getBasalProfileSwitches(from))
   }
 
   @Test
-  fun getProfileSwitches_pastTemp() {
+  fun getProfileSwitches_pastTemp() = runBlocking {
     val ps1: MlProfileSwitch
     runBlocking {
       ps1 = createProfileSwitch(Instant.parse("2019-12-01T01:00:00Z"), null, 1.1)
@@ -192,10 +192,10 @@ class MongoDbInputProviderTest {
     }
     assertEquals(
         MlProfileSwitches(ps1, ps1, emptyList()),
-        ip.getBasalProfileSwitches(from).blockingGet())
+        ip.getBasalProfileSwitches(from))
   }
   @Test
-  fun getProfileSwitches_temp() {
+  fun getProfileSwitches_temp() = runBlocking {
     val ps1: MlProfileSwitch
     val ps2: MlProfileSwitch
     val ps3: MlProfileSwitch
@@ -211,7 +211,7 @@ class MongoDbInputProviderTest {
     }
     assertEquals(
         MlProfileSwitches(ps1, ps2, listOf(ps3)),
-        ip.getBasalProfileSwitches(from).blockingGet())
+        ip.getBasalProfileSwitches(from))
   }
 
   private suspend fun createTempBasal(timestamp: Instant, duration: Duration?, rate: Double?): MlTemporaryBasalRate {
@@ -226,13 +226,13 @@ class MongoDbInputProviderTest {
   }
 
   @Test
-  fun getTempBasal() {
+  fun getTempBasal() = runBlocking {
     val tb = runBlocking {
       createTempBasal(
           Instant.parse("2020-01-01T01:10:00Z"),
           Duration.ofMinutes(20),
           1.1)
     }
-    assertEquals(listOf(tb), ip.getTemporaryBasalRates(from).blockingGet())
+    assertEquals(listOf(tb), ip.getTemporaryBasalRates(from))
   }
 }

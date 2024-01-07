@@ -2,6 +2,7 @@ package cc.buessow.glumagic.mongodb
 
 import cc.buessow.glumagic.input.DateValue
 import com.google.gson.JsonParser
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
@@ -31,7 +32,7 @@ class MongoApiInputProviderTest {
   }
 
   @Test
-  fun getGlucoseReadings() {
+  fun getGlucoseReadings() = runBlocking {
     webServer.enqueue(
         MockResponse().apply {
           setResponseCode(200)
@@ -40,7 +41,7 @@ class MongoApiInputProviderTest {
 
     assertArrayEquals(
         arrayOf(DateValue(date, 101.0)),
-        inputProvider.getGlucoseReadings(date).blockingGet().toTypedArray())
+        inputProvider.getGlucoseReadings(date).toTypedArray())
 
     assertEquals(1, webServer.requestCount)
     val req = webServer.takeRequest()
@@ -55,21 +56,21 @@ class MongoApiInputProviderTest {
   }
 
   @Test
-  fun getGlucoseReadings_http400() {
+  fun getGlucoseReadings_http400() = runBlocking {
     webServer.enqueue(MockResponse().setResponseCode(400).setBody("error"))
     try {
-      inputProvider.getGlucoseReadings(date).blockingGet()
+      inputProvider.getGlucoseReadings(date)
       fail()
     } catch(e: Exception) {
-      assertEquals("request failed: 400 'error'", e.cause!!.message)
+      assertEquals("request failed: 400 'error'", e.message)
     }
   }
 
   @Test
-  fun getGlucoseReadings_badResponse() {
+  fun getGlucoseReadings_badResponse() = runBlocking {
     webServer.enqueue(MockResponse().setResponseCode(200).setBody("error"))
     try {
-      inputProvider.getGlucoseReadings(date).blockingGet()
+      inputProvider.getGlucoseReadings(date)
       fail()
     } catch(e: Exception) {
       assertEquals(
