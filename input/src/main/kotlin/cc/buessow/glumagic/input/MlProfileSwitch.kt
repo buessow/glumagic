@@ -2,7 +2,7 @@ package cc.buessow.glumagic.input
 
 import java.time.Duration
 import java.time.Instant
-import java.time.OffsetDateTime
+import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
 data class MlProfileSwitch(
@@ -15,8 +15,8 @@ data class MlProfileSwitch(
   val isValid = basalRates.sumOf { (d, _) -> d.seconds } == 24 * 3600L
 
   fun toBasal(
-      from: OffsetDateTime,
-      to: OffsetDateTime) = sequence {
+      from: ZonedDateTime,
+      to: ZonedDateTime) = sequence {
     if (!isValid) throw IllegalArgumentException("Invalid basal profile")
     if (to <= from) return@sequence
 

@@ -3,7 +3,7 @@ package cc.buessow.glumagic.input
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
-import java.time.OffsetDateTime
+import java.time.ZonedDateTime
 
 class MlProfileSwitchesTest {
 
@@ -15,8 +15,8 @@ class MlProfileSwitchesTest {
             basalRates = listOf(Duration.ofHours(24) to 1.1))
         val bpss = MlProfileSwitches(bps, bps, emptyList())
 
-        val start = OffsetDateTime.parse("2013-12-13T10:00:00Z")
-        val end = OffsetDateTime.parse("2013-12-13T22:00:00Z")
+        val start = ZonedDateTime.parse("2013-12-13T10:00:00Z")
+        val end = ZonedDateTime.parse("2013-12-13T22:00:00Z")
 
         // zero duration
         val basalRates0 = bpss.toBasal(start, start).toList()
@@ -39,8 +39,8 @@ class MlProfileSwitchesTest {
             duration = Duration.ofHours(2))
         val bpss = MlProfileSwitches(bps, bpst, emptyList())
 
-        val start = OffsetDateTime.parse("2013-12-13T12:00:00Z")
-        val end = OffsetDateTime.parse("2013-12-13T22:00:00Z")
+        val start = ZonedDateTime.parse("2013-12-13T12:00:00Z")
+        val end = ZonedDateTime.parse("2013-12-13T22:00:00Z")
 
         val basalRates1 = bpss.toBasal(start, end).toList()
         DataLoaderTest.assertCollectionEquals(
@@ -63,8 +63,8 @@ class MlProfileSwitchesTest {
             Instant.parse("2013-12-13T13:00:00Z"), 2.0, Duration.ofHours(2))
         val bpss = MlProfileSwitches(bps, bps, listOf(bpst))
 
-        val start = OffsetDateTime.parse("2013-12-13T12:00:00Z")
-        val end = OffsetDateTime.parse("2013-12-13T17:30:00Z")
+        val start = ZonedDateTime.parse("2013-12-13T12:00:00Z")
+        val end = ZonedDateTime.parse("2013-12-13T17:30:00Z")
 
         val basalRates1 = bpss.toBasal(start, end).toList()
         DataLoaderTest.assertCollectionEquals(
@@ -87,8 +87,8 @@ class MlProfileSwitchesTest {
                 Instant.parse("2013-12-13T14:00:00Z"), 3.0, Duration.ofHours(2)))
         val bpss = MlProfileSwitches(bps, bps, bpsNext)
 
-        val start = OffsetDateTime.parse("2013-12-13T12:00:00Z")
-        val end = OffsetDateTime.parse("2013-12-13T17:30:00Z")
+        val start = ZonedDateTime.parse("2013-12-13T12:00:00Z")
+        val end = ZonedDateTime.parse("2013-12-13T17:30:00Z")
         val basalRates1 = bpss.toBasal(start, end).toList()
         DataLoaderTest.assertCollectionEquals(
             basalRates1,
@@ -112,8 +112,8 @@ class MlProfileSwitchesTest {
         )
         val bpss = MlProfileSwitches(bps, bps, bpsNext)
 
-        val start = OffsetDateTime.parse("2013-12-13T12:00:00Z")
-        val end = OffsetDateTime.parse("2013-12-13T20:00:00Z")
+        val start = ZonedDateTime.parse("2013-12-13T12:00:00Z")
+        val end = ZonedDateTime.parse("2013-12-13T20:00:00Z")
         DataLoaderTest.assertCollectionEquals(
             bpss.toBasal(start, end).toList(),
             DateValue(Instant.parse("2013-12-13T12:00:00Z"), 1.12),

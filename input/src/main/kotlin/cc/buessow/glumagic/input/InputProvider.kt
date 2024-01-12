@@ -4,10 +4,10 @@ import java.time.Duration
 import java.time.Instant
 
 interface InputProvider {
-  suspend fun getGlucoseReadings(from: Instant): List<DateValue>
-  suspend fun getHeartRates(from: Instant): List<DateValue>
-  suspend fun getCarbs(from: Instant): List<DateValue>
-  suspend fun getBoluses(from: Instant): List<DateValue>
+  suspend fun getGlucoseReadings(from: Instant, upto: Instant? = null): List<DateValue>
+  suspend fun getHeartRates(from: Instant, upto: Instant? = null): List<DateValue>
+  suspend fun getCarbs(from: Instant, upto: Instant? = null): List<DateValue>
+  suspend fun getBoluses(from: Instant, upto: Instant? = null): List<DateValue>
   suspend fun getLongHeartRates(at: Instant, threshold: Int, durations: List<Duration>): List<Int> {
     val maxDuration = durations.maxOrNull() ?: return emptyList()
     val hrs = getHeartRates(at - maxDuration)
@@ -21,7 +21,7 @@ interface InputProvider {
     return counts
   }
 
-  suspend fun getBasalProfileSwitches(from: Instant): MlProfileSwitches?
+  suspend fun getBasalProfileSwitches(from: Instant, upto: Instant? = null): MlProfileSwitches?
 
-  suspend fun getTemporaryBasalRates(from: Instant): List<MlTemporaryBasalRate>
+  suspend fun getTemporaryBasalRates(from: Instant, upto: Instant? = null): List<MlTemporaryBasalRate>
 }

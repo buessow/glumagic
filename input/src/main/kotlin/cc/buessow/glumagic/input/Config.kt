@@ -1,17 +1,12 @@
 package cc.buessow.glumagic.input
 
-import com.google.gson.GsonBuilder
-import com.google.gson.TypeAdapter
 import com.google.gson.annotations.SerializedName
-import com.google.gson.stream.JsonReader
-import com.google.gson.stream.JsonWriter
 import java.io.File
 import java.io.InputStream
 import java.time.Duration
 import java.time.Instant
-import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 data class Config(
     @SerializedName("trainingPeriodMinutes")
@@ -24,7 +19,13 @@ data class Config(
     @SerializedName("freqMinutes")
     val freq: Duration = Duration.ofMinutes(5),
     val testData: List<TestData> = emptyList(),
+    var zoneId: ZoneId = ZoneOffset.UTC,
 ) {
+
+  companion object {
+    fun fromJson(input: InputStream): Config = JsonParser.fromJson(input)
+    fun fromJson(jsonFile: File): Config = JsonParser.fromJson(jsonFile)
+  }
   val inputSize
     get() =
       // hour of day and long heart rates
@@ -63,55 +64,5 @@ data class Config(
   ) {
     override fun equals(other: Any?) = super.equals(other)
     override fun hashCode() = super.hashCode()
-  }
-
-  companion object {
-    fun fromJson(jsonFile: File): Config {
-      return fromJson(jsonFile.readText())
-    }
-
-    fun fromJson(jsonInput: InputStream): Config {
-      return fromJson(jsonInput.bufferedReader().use { it.readText() })
-    }
-
-    fun fromJson(json: String): Config {
-      val builder = GsonBuilder()
-      val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssxxxxx")
-
-      builder.registerTypeAdapter(
-          LocalDateTime::class.java,
-          object : TypeAdapter<LocalDateTime>() {
-            override fun write(out: JsonWriter, value: LocalDateTime?) {
-              if (value != null) out.value(formatter.format(value))
-              else out.nullValue()
-            }
-
-            override fun read(jr: JsonReader) =
-              LocalDateTime.parse(jr.nextString(), formatter)
-          })
-      builder.registerTypeAdapter(
-          Instant::class.java,
-          object : TypeAdapter<Instant>() {
-            override fun write(out: JsonWriter, value: Instant?) {
-              if (value != null) out.value(formatter.format(value))
-              else out.nullValue()
-            }
-
-            override fun read(jr: JsonReader) =
-              LocalDateTime.parse(jr.nextString(), formatter).toInstant(ZoneOffset.UTC)
-          })
-      builder.registerTypeAdapter(
-          Duration::class.java,
-          object : TypeAdapter<Duration>() {
-            override fun write(out: JsonWriter, value: Duration?) {
-              if (value != null) out.value(value.toMinutes())
-              else out.nullValue()
-            }
-
-            override fun read(jr: JsonReader) =
-              Duration.ofMinutes(jr.nextLong())
-          })
-      return builder.create().fromJson(json, Config::class.java)
-    }
   }
 }

@@ -28,7 +28,10 @@ java {
 }
 
 dependencies {
+    implementation(kotlin("reflect"))
+
     implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.apache.commons.csv)
     testImplementation(testLibs.bundles.base)
 }

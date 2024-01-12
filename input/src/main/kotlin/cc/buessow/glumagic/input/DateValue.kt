@@ -6,5 +6,5 @@ data class DateValue(val timestamp: Instant, val value: Double) {
   constructor(timestamp: Long, value: Double) :
       this(Instant.ofEpochMilli(timestamp), value)
 
-  override fun toString() = "DateValue($timestamp, ${String.format("%.2f", value)})"
+  override fun toString() = "DV($timestamp, ${String.format("%.2f", value)})"
 }

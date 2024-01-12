@@ -1,7 +1,6 @@
 package cc.buessow.glumagic.input
 
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
+import java.time.ZonedDateTime
 
 data class MlProfileSwitches(
     val firstPermanent: MlProfileSwitch,
@@ -9,8 +8,8 @@ data class MlProfileSwitches(
     val switches: List<MlProfileSwitch>) {
 
   fun toBasal(
-      from: OffsetDateTime,
-      to: OffsetDateTime) = sequence {
+      from: ZonedDateTime,
+      to: ZonedDateTime) = sequence {
 
     var current: MlProfileSwitch? = first
     var currentPermanent = firstPermanent
@@ -18,7 +17,7 @@ data class MlProfileSwitches(
     val iter = switches.iterator()
     while (current != null) {
       val next = if (iter.hasNext()) iter.next() else null
-      val nextStart = next?.start?.atOffset(ZoneOffset.UTC) ?: to
+      val nextStart = next?.start?.atZone(to.zone) ?: to
       if (current.duration != null) {
         val end = (t + current.duration).coerceAtMost(nextStart)
         yieldAll(current.toBasal(t, end))

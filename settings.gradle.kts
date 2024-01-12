@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 pluginManagement {
     repositories {
         mavenCentral()
@@ -37,6 +39,7 @@ dependencyResolutionManagement {
         val okHttpVersion = "4.12.0"
 
         create("libs") {
+            library("apache.commons.csv", "org.apache.commons:commons-csv:1.10.0")
             library("gson", "com.google.code.gson:gson:2.8.9")
             library("reactivex", "io.reactivex.rxjava3:rxjava:3.0.4")
             library("mongodb", "org.mongodb:mongodb-driver-kotlin-coroutine:4.11.0")
