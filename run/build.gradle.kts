@@ -1,17 +1,20 @@
 plugins {
     kotlin("jvm")
+    java
     application
 }
 
 group = "cc.buessow.glumagic"
-version = "1.0-SNAPSHOT"
+version = "1.0"
+val mainProjectClass = "cc.buessow.glumagic.Main"
 
 kotlin {
     jvmToolchain(17)
 }
 
 application {
-    mainClass.set("cc.buessow.glumagic.Main")
+    applicationName = "glumagic-$version"
+    mainClass.set(mainProjectClass)
 }
 
 tasks.test {
@@ -24,4 +27,15 @@ dependencies {
     implementation(libs.kotlinx.cli)
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(testLibs.junit)
+}
+
+tasks.register("fatJar", type = Jar::class) {
+    dependsOn(configurations.runtimeClasspath)
+    archiveBaseName = "glumagic"
+    manifest {
+        attributes["Main-Class"] = mainProjectClass
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(sourceSets.main.get().output)
+    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
 }
