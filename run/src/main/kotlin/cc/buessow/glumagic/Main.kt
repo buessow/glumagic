@@ -81,8 +81,13 @@ object Main {
 
   private fun output(
       from: Instant, upto: Instant, input: InputProvider, config: Config, outFile: File?) {
-    val config1 = config.copy(
-        trainingPeriod = Duration.between(from, upto), predictionPeriod = Duration.ZERO)
+    val config1 = Config(
+        trainingPeriod = Duration.between(from, upto),
+        predictionPeriod = Duration.ZERO,
+        hrLong = config.hrLong,
+        hrHighThreshold = config.hrHighThreshold,
+        freq = config.freq,
+        zoneId = config.zoneId)
     val trainingData = DataLoader.getTrainingData(input, from, config1)
     println("Loaded ${trainingData.date.size} values")
     if (outFile == null) {

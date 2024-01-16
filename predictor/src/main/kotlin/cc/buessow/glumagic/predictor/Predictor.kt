@@ -11,7 +11,6 @@ import java.io.InputStream
 import java.lang.Float.isNaN
 import java.nio.ByteBuffer
 import java.time.Instant
-import java.time.ZoneOffset
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -34,6 +33,7 @@ class Predictor private constructor(
       return Predictor(Config.fromJson(modelMetaInput), Interpreter(modelByteBuf))
     }
 
+    @Suppress("UNUSED")
     fun create(
         modelPath: File = File("/storage/emulated/0/Download"),
         modelName: String = "glucose_model"): Predictor? {
@@ -58,11 +58,6 @@ class Predictor private constructor(
       return null
     }
   }
-
-//  init {
-//    config.zoneId = config.zoneId ?: ZoneOffset.UTC
-//    assert (config.zoneId != null)
-//  }
 
   val isValid: Boolean = ModelVerifier(this).runAll()
 

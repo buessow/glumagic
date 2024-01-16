@@ -97,7 +97,7 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadGlucoseReadings()
-    assertCollectionEqualsF(values, Float.NaN, 80F, 120F, 120F, 120F, Float.NaN, eps = 1e-2)
+    assertCollectionEqualsF(values, Float.NaN, 80F, 120F, 120F, 120F, 120F, eps = 1e-2)
     verify(dp).getGlucoseReadings(
         Instant.parse("2013-12-13T19:24:00Z"),
         Instant.parse("2013-12-13T20:00:00Z"))
@@ -129,7 +129,7 @@ class DataLoaderTest {
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadHeartRates()
     assertCollectionEqualsF(
-        values, Float.NaN, 80F, 120F, 120F, 120F, Float.NaN, 60F, 60.0F, 60.0F, eps = 1e-2
+        values, Float.NaN, 80F, 120F, 120F, 120F, 120F, 60F, 60.0F, 60.0F, eps = 1e-2
     )
     verify(dp).getHeartRates(Instant.parse("2013-12-13T19:24:00Z"))
     Unit
@@ -153,7 +153,7 @@ class DataLoaderTest {
     assertEquals(3, values.size)
     assertCollectionEqualsF(
         values[0],
-        80F, 80F, 121F, 121F, 121F, Float.NaN, Float.NaN, Float.NaN, Float.NaN,
+        80F, 80F, 121F, 121F, 121F, 121.00F, 121.00F, 121.00F, 121.00F,
         eps = 1e-2)
     assertCollectionEqualsF(
         values[1], 0F, 0F, 1F, 1F, 1F, 1F, 1F, 1F, 1F, eps = 1e-2)

@@ -8,7 +8,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 
-data class Config(
+class Config(
     @SerializedName("trainingPeriodMinutes")
     val trainingPeriod: Duration,
     @SerializedName("predictionPeriodMinutes")
@@ -19,8 +19,12 @@ data class Config(
     @SerializedName("freqMinutes")
     val freq: Duration = Duration.ofMinutes(5),
     val testData: List<TestData> = emptyList(),
-    var zoneId: ZoneId = ZoneOffset.UTC,
+    zoneId: ZoneId?,
 ) {
+
+
+  private val providedZoneId = zoneId
+  val zoneId: ZoneId get() = providedZoneId ?: ZoneOffset.UTC
 
   companion object {
     fun fromJson(input: InputStream): Config = JsonParser.fromJson(input)
