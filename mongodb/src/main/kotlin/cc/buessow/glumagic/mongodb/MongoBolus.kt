@@ -9,10 +9,10 @@ import java.time.Instant
 internal data class MongoBolus(
     @SerializedName("created_at") @BsonProperty("created_at") val createdAt: String?,
     val date: Long? = null,
-    val insulin: Double) {
+    val insulin: Double): MongoDateValue {
 
   private val created: Instant get() =
     date?.let { Instant.ofEpochMilli(it) } ?: Instant.parse(createdAt!!)
 
-  fun toDateValue() = DateValue(created, insulin)
+  override fun toDateValue() = DateValue(created, insulin)
 }

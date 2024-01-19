@@ -5,7 +5,7 @@ import org.jetbrains.annotations.VisibleForTesting
 import java.time.*
 import java.time.temporal.ChronoUnit
 import java.util.*
-
+import kotlin.math.round
 
 class DataLoader(
     private val inputProvider: InputProvider,
@@ -36,7 +36,7 @@ class DataLoader(
     fun getTrainingData(input: InputProvider, time:Instant, config: Config) = runBlocking {
       val dl = DataLoader(input, time, config)
       val deferredGlucose = async { dl.loadGlucoseReadings() }
-      val deferredHeartRate = async { dl.loadHeartRates2() }
+      val deferredHeartRate = async { dl.loadHeartRatesWithLong() }
       val deferredCarbAction = async { dl.loadCarbAction() }
       val deferredInsulinAction = async { dl.loadInsulinAction() }
 
@@ -100,7 +100,7 @@ class DataLoader(
           val tempEnd = temp.end
           temp = itTemp.nextOrNull()
           if (temp == null || tempEnd < temp.timestamp) {
-            result.add(dv.copy(timestamp = tempEnd))
+            result.add(DateValue(timestamp = tempEnd, value = dv.value))
           }
         }
       }
@@ -176,27 +176,25 @@ class DataLoader(
     }
   }
 
-  /** Fraction of [Config::freq] time, where [a] is true. This can be a fraction, if [a] is only
-   * true for less than [Config::freq], i.e. if we have more values than [Config::freq].
-   */
-  private fun timeTrue(values: List<DateValue>, upto: Instant, a: (DateValue)->Boolean): Double {
-    var active = Duration.ZERO
-    var total = Duration.ZERO
+  /** Number milliseconds, where [a] is true.*/
+  private fun millisTrue(values: List<DateValue>, upto: Instant, a: (DateValue)->Boolean): Long {
+    var activeMillis = 0L
     for ((v1, v2) in (values + listOf(DateValue(upto, 0.0))).zipWithNext()) {
       val d = Duration.between(v1.timestamp, v2.timestamp).coerceAtMost(config.freq)
-      total += d
-      if (a(v1)) active += d
+      if (a(v1)) activeMillis += d.toMillis()
     }
-    return if (total > Duration.ZERO) {
-      (total / config.freq) * active.toMillis().toDouble() / total.toMillis()
-    } else {
-      0.0
-    }
+    return activeMillis
   }
 
   private fun highHeartRate(dv: DateValue) = dv.value > config.hrHighThreshold
 
-  suspend fun loadHeartRates2(): List<List<Float>> {
+  private fun subList(values: List<DateValue>, start: Int, upto: Instant): List<DateValue> {
+    var end = start
+    while (end < values.size && values[end].timestamp <= upto) end++
+    return values.subList(start, end)
+  }
+
+  suspend fun loadHeartRatesWithLong(): List<List<Float>> {
     val maxPeriod = config.hrLong.maxOrNull() ?: Duration.ZERO
     val hrs = inputProvider.getHeartRates(inputFrom - maxPeriod, inputUpTo)
     val result = mutableListOf(align(inputFrom, hrs, inputUpTo, config.freq).toList())
@@ -208,19 +206,19 @@ class DataLoader(
       // that we find and then do the same with periodStartIdx but decrease highCount.
       var periodStartIdx = 0
       var periodEndIdx = 0
-      var highCount = 0.0
+      var highMillis = 0L
       for (ts in intervals) {
-        val n = hrs.drop(periodEndIdx).takeWhile { dv -> dv.timestamp <= ts }
+        val n = subList(hrs, periodEndIdx, ts)
         periodEndIdx += n.size
-        highCount += timeTrue(
+        highMillis += millisTrue(
             n, hrs.elementAtOrNull(periodEndIdx)?.timestamp ?: inputUpTo, ::highHeartRate)
 
-        val p = hrs.drop(periodStartIdx).takeWhile { dv -> dv.timestamp < ts - th }
+        val p = subList(hrs, periodStartIdx, ts - th)
         periodStartIdx += p.size
-        highCount -= timeTrue(
+        highMillis -= millisTrue(
             p, hrs.elementAtOrNull(periodStartIdx)?.timestamp ?: inputUpTo, ::highHeartRate)
 
-        hrLong.add(highCount.toFloat())
+        hrLong.add(round(highMillis.toDouble() / config.freq.toMillis()).toFloat())
       }
       result.add(hrLong)
     }
@@ -296,8 +294,8 @@ class DataLoader(
   }
 
   private suspend fun loadBolusAction(): List<Float> {
-    return inputProvider.getBoluses(inputFrom - insulinAction.maxAge, inputUpTo).let { cs ->
-      insulinAction.valuesAt(cs, intervals).map(Double::toFloat)
+    return inputProvider.getBoluses(inputFrom - insulinAction.maxAge, inputUpTo).let { bs ->
+      insulinAction.valuesAt(bs, intervals).map(Double::toFloat)
     }
   }
 

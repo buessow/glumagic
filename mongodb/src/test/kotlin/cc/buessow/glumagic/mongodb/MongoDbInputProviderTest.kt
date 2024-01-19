@@ -74,12 +74,12 @@ class MongoDbInputProviderTest {
 
   private suspend fun createHeartRateActivity(timestamp: Instant, value: Int): DateValue {
     db.getCollection<MongoHeartRateActivity>("activity").insertOne(
-        MongoHeartRateActivity(timestamp.toEpochMilli(), value))
+        MongoHeartRateActivity(timestamp.toString(), value))
     return DateValue(timestamp, value.toDouble())
   }
 
   private suspend fun createHeartRateTreatments(timestamp: Instant, value: Int): DateValue {
-    db.getCollection<MongoHeartRateTreatment>("activity").insertOne(
+    db.getCollection<MongoHeartRateTreatment>("treatments").insertOne(
         MongoHeartRateTreatment(timestamp.toEpochMilli(), value))
     return DateValue(timestamp, value.toDouble())
   }

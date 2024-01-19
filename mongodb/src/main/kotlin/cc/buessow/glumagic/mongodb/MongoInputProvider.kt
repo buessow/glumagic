@@ -37,14 +37,32 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
       sort: Bson,
       limit: Int = 0) = query(T::class.java, filter, sort, limit)
 
-  private suspend inline fun <reified T: MongoDateValue> query(
+  /** Query with date as long (millis) columns. */
+  private suspend inline fun <reified T: MongoDateValue> queryMillis(
       from: Instant,
       upto: Instant?,
       filter: Bson? = null,
       dateColumn: String = "date"): List<DateValue> {
+    return query<T>(from.toEpochMilli(), upto?.toEpochMilli(), filter, dateColumn)
+  }
+
+  /** Query with date as string column. */
+  private suspend inline fun <reified T: MongoDateValue> queryString(
+      from: Instant,
+      upto: Instant?,
+      filter: Bson? = null,
+      dateColumn: String = "date"): List<DateValue> {
+    return query<T>(from.toString(), upto?.toString(), filter, dateColumn)
+  }
+
+  private suspend inline fun <reified T: MongoDateValue> query(
+        from: Any,
+        upto: Any?,
+        filter: Bson? = null,
+        dateColumn: String = "date"): List<DateValue> {
       return query<T>(
-          and(gte(dateColumn, from.toEpochMilli()),
-              upto?.let { lt(dateColumn, it.toEpochMilli()) },
+          and(gte(dateColumn, from),
+              upto?.let { lt(dateColumn, it) },
               filter),
           Sorts.ascending(dateColumn))
           .map { t -> t.toDateValue() }
@@ -52,35 +70,24 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
   }
 
   override suspend fun getGlucoseReadings(from: Instant, upto: Instant?): List<DateValue> {
-    return query<MongoGlucose>(from, upto) }
+    return queryMillis<MongoGlucose>(from, upto)
+  }
 
   override suspend fun getHeartRates(from: Instant, upto: Instant?): List<DateValue> = coroutineScope {
     val eventFilter = eq("eventType", "HeartRate")
-    val hr1 = async { query<MongoHeartRate>(from, upto) }
-    val hr2 = async { query<MongoHeartRateActivity>(from, upto, eventFilter, "samplingStart") }
-    val hr3 = async { query<MongoHeartRateTreatment>(from, upto, eventFilter, "samplingStart") }
+    val hr1 = async { queryMillis<MongoHeartRate>(from, upto) }
+    val hr2 = async { queryString<MongoHeartRateActivity>(from, upto, eventFilter, "samplingStart") }
+    val hr3 = async { queryMillis<MongoHeartRateTreatment>(from, upto, eventFilter, "samplingStart") }
 
     awaitAll(hr1, hr2, hr3).flatten().sortedBy { it.timestamp }
   }
 
   override suspend fun getCarbs(from: Instant, upto: Instant?): List<DateValue> {
-    return query<MongoCarbs>(
-        and(gte("created_at", from.toString()),
-            upto?.let { lt("created_at", from.toString()) },
-            ne("carbs", null)),
-        Sorts.ascending("created_at"))
-        .map(MongoCarbs::toDateValue)
-        .toList()
+    return queryString<MongoCarbs>(from, upto, ne("carbs", null), "created_at")
   }
 
   override suspend fun getBoluses(from: Instant, upto: Instant?): List<DateValue> {
-    return query<MongoBolus>(
-        and(gte("created_at", from.toString()),
-            upto?.let { lt("created_at", from.toString()) },
-            ne("insulin", null)),
-        Sorts.ascending("created_at"))
-        .map(MongoBolus::toDateValue)
-        .toList()
+    return queryString<MongoBolus>(from, upto, ne("insulin", null), "created_at")
   }
 
   private suspend fun queryProfileSwitches(
@@ -90,11 +97,11 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
       onlyPermanent: Boolean = false,
       limit: Int = 0): List<MlProfileSwitch> {
     return query<MongoProfileSwitch>(
-          and(after?.let { gt("created_at", it.toString()) },
-              until?.let { lte("created_at", it.toString()) },
-              if (onlyPermanent) `in`("originalDuration", null, 0) else null,
-              `in`("eventType", "Profile Switch", "Note"),
-              ne("profileJson", null)),
+        and(after?.let { gt("created_at", it.toString()) },
+            until?.let { lte("created_at", it.toString()) },
+            if (onlyPermanent) `in`("originalDuration", null, 0) else null,
+            `in`("eventType", "Profile Switch", "Note"),
+            ne("profileJson", null)),
         sort,
         limit).map(MongoProfileSwitch::toMlProfileSwitch).toList()
   }

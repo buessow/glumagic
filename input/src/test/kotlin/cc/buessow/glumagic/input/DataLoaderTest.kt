@@ -7,6 +7,7 @@ import org.mockito.kotlin.*
 import java.lang.Float.isNaN
 import java.time.Duration
 import java.time.Duration.ofMinutes
+import java.time.Duration.ofSeconds
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.math.abs
@@ -149,7 +150,7 @@ class DataLoaderTest {
       )
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
-    val values = dataLoader.loadHeartRates2()
+    val values = dataLoader.loadHeartRatesWithLong()
     assertEquals(3, values.size)
     assertCollectionEqualsF(
         values[0],
@@ -158,12 +159,77 @@ class DataLoaderTest {
     assertCollectionEqualsF(
         values[1], 0F, 0F, 1F, 1F, 1F, 1F, 1F, 1F, 1F, eps = 1e-2)
     assertCollectionEqualsF(
-        values[2], 2F, 2F, 3F, 3F, 2F, 1F, 1F, 1F, 1F, eps = 1e-2)
+        values[2], 2F, 2F, 3F, 2F, 1F, 1F, 1F, 1F, 1F, eps = 1e-2)
     verify(dp).getHeartRates(
         Instant.parse("2013-12-13T17:30:00Z"),
         Instant.parse("2013-12-13T20:15:00Z"))
     Unit
   }
+
+  @Test
+  fun loadHeartRatesWithLong_allHigh() = runBlocking {
+    val dataFrom = Instant.parse("2020-01-01T00:00:00Z")
+    val from = Instant.parse("2020-01-01T02:00:00Z")
+    val upto = Instant.parse("2020-06-01T00:00:00Z")
+    val c = Config(
+        trainingPeriod = Duration.between(from, upto),
+        predictionPeriod = Duration.ZERO,
+        hrHighThreshold = 99,
+        hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
+        zoneId = ZoneId.of("UTC"))
+    val dp = mock<InputProvider> {
+      onBlocking { getHeartRates(any(), any()) }.thenReturn(
+        (dataFrom ..< upto step config.freq).mapIndexed { i, t ->
+          DateValue(t + ofMinutes(1), 100 + i) })
+    }
+    val dataLoader = DataLoader(dp, from, c)
+    val values = dataLoader.loadHeartRatesWithLong()
+    assertEquals(3, values.size)
+    val count = Duration.between(from, upto) / config.freq
+    assertEquals(count, values[0].size)
+    assertEquals(count, values[1].size)
+    assertEquals(count, values[2].size)
+    assertCollectionEqualsF(values[1], *FloatArray(count) { 12F }, eps = 1e-2)
+    assertCollectionEqualsF(values[2], *FloatArray(count) { 24F }, eps = 1e-2)
+    verify(dp).getHeartRates(dataFrom, upto)
+    Unit
+  }
+
+  @Test
+  fun loadHeartRatesWithLong_mixed() = runBlocking {
+    val dataFrom = Instant.parse("2020-01-01T00:00:00Z")
+    val from = Instant.parse("2020-01-01T02:00:00Z")
+    val upto = Instant.parse("2020-01-01T05:00:00Z")
+    val c = Config(
+        trainingPeriod = Duration.between(from, upto),
+        predictionPeriod = Duration.ZERO,
+        hrHighThreshold = 99,
+        hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
+        zoneId = ZoneId.of("UTC"))
+    val dp = mock<InputProvider> {
+      onBlocking { getHeartRates(any(), any()) }.thenReturn(
+          (dataFrom ..< upto step config.freq).mapIndexed { i, t ->
+            DateValue(
+                t + ofMinutes(1) - ofSeconds(5L - i % 10),
+                when (i % 12) {
+                  0 -> Double.NaN
+                  1, 2, 3 -> 80 + (i / 100.0)
+                  else -> 100 + i
+                })})
+    }
+    val dataLoader = DataLoader(dp, from, c)
+    val values = dataLoader.loadHeartRatesWithLong()
+    assertEquals(config.hrLong.size + 1, values.size)
+    val count = Duration.between(from, upto) / config.freq
+    assertEquals(count, values[0].size)
+    assertEquals(count, values[1].size)
+    assertEquals(count, values[2].size)
+    assertCollectionEqualsF(values[1], *FloatArray(count) { i -> 8F }, eps = 0.1)
+    assertCollectionEqualsF(values[2], *FloatArray(count) { 16F }, eps = 0.1)
+    verify(dp).getHeartRates(dataFrom, upto)
+    Unit
+  }
+
 
   @Test
   fun loadLongHeartRates() = runBlocking {
@@ -523,7 +589,7 @@ class DataLoaderTest {
         glucoseSlope1 = listOf(0F, 0.2F, 0.2F, 0.2F, 0.2F, 0F),
         glucoseSlope2 = listOf(0F, 0.02F, 0F, 0F, -0.02F, 0F),
         heartRate = dates.indices.map { i -> 134F + i },
-        hrLong1 = List(6) { 13F },
+        hrLong1 = List(6) { 12F },
         hrLong2 = List(6) { i -> 14F + i },
         carbAction = listOf(0.8399423F, 2.5200033F, 4.7043586F, 6.757628F, 8.27433F, 9.131501F),
         insulinAction = List(6) { 0F })
@@ -576,7 +642,7 @@ class DataLoaderTest {
       val e = expected.mapIndexed { i, f ->
         (if (i == mis) "**" else "") + toString(f)
       }.joinToString()
-      throw AssertionError("expected [$e] but was [$a]")
+      throw AssertionError("\n expected  [$e]\n   but was [$a]")
     }
 
     fun assertCollectionEquals(actual: Collection<DateValue>, vararg expected: DateValue) =

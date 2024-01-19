@@ -23,7 +23,7 @@ dependencies {
 }
 
 tasks.register("fatJar", type = Jar::class) {
-    dependsOn("test", configurations.runtimeClasspath)
+    dependsOn("test", ":input:test", ":mongodb:test", configurations.runtimeClasspath)
     archiveBaseName = "glumagic"
     manifest {
         attributes["Main-Class"] = mainProjectClass

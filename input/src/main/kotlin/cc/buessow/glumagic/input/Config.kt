@@ -12,9 +12,9 @@ class Config(
     @SerializedName("trainingPeriodMinutes")
     val trainingPeriod: Duration,
     @SerializedName("predictionPeriodMinutes")
-    val predictionPeriod: Duration,
+    val predictionPeriod: Duration = Duration.ZERO,
     @SerializedName("hrLongDurationMinutes")
-    val hrLong: List<Duration>, // = listOf(Duration.ofHours(24), Duration.ofHours(48)),
+    val hrLong: List<Duration>,
     val hrHighThreshold: Int,
     @SerializedName("freqMinutes")
     val freq: Duration = Duration.ofMinutes(5),

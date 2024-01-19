@@ -59,7 +59,7 @@ class Predictor private constructor(
     }
   }
 
-  val isValid: Boolean = ModelVerifier(this).runAll()
+  val isValid: Boolean get() = ModelVerifier(this).runAll()
 
   fun predictGlucoseSlopes(inputData: FloatArray): List<Double> {
     val cleanInput = inputData.map { f -> if (isNaN(f)) 0.0F else f }.toFloatArray()

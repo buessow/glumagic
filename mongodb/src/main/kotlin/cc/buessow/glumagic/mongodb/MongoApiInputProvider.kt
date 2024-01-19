@@ -35,6 +35,22 @@ class MongoApiInputProvider(
       filter: Bson,
       sort: Bson,
       limit: Int): List<T> {
+    val result = mutableListOf<T>()
+    val l = if (limit > 0) limit else Int.MAX_VALUE
+    val batchSize = l.coerceAtMost(1000)
+    do {
+      val batch = query(clazz, filter, sort, limit = batchSize, skip = result.size)
+      result.addAll(batch.take(l - result.size))
+    } while (result.size < l && batch.isNotEmpty() && batch.size >= batchSize)
+    return result
+  }
+
+  private suspend fun <T : Any> query(
+      clazz: Class<T>,
+      filter: Bson,
+      sort: Bson,
+      limit: Int,
+      skip: Int): List<T> {
     val collectionName = clazz.getAnnotation(MongoCollection::class.java).name
     val body = BsonDocument().apply {
       put("collection", BsonString(collectionName))
@@ -43,6 +59,7 @@ class MongoApiInputProvider(
       put("filter", filter.toBsonDocument())
       put("sort", sort.toBsonDocument())
       if (limit > 0) put("limit", BsonInt32(limit))
+      if (skip > 0) put("skip", BsonInt32(skip))
     }
     val req = Request.Builder()
         .url("$apiUrl/endpoint/data/v1/action/find")

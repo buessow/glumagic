@@ -10,7 +10,7 @@ interface InputProvider {
   suspend fun getBoluses(from: Instant, upto: Instant? = null): List<DateValue>
   suspend fun getLongHeartRates(at: Instant, threshold: Int, durations: List<Duration>): List<Int> {
     val maxDuration = durations.maxOrNull() ?: return emptyList()
-    val hrs = getHeartRates(at - maxDuration)
+    val hrs = getHeartRates(at - maxDuration, at)
     val counts = MutableList(durations.size) { 0 }
     for (hr in hrs) {
       for ((i, period) in durations.withIndex()) {

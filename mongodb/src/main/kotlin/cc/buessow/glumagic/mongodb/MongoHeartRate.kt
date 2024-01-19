@@ -1,23 +1,24 @@
 package cc.buessow.glumagic.mongodb
 
+import cc.buessow.glumagic.input.DateValue
 import com.google.gson.annotations.SerializedName
 import org.bson.codecs.pojo.annotations.BsonProperty
+import java.time.Instant
 
 @MongoCollection("heartrate")
-internal data class MongoHeartRate(override val date: Long, val beatsPerMinute: Int):
-  MongoDateValue {
-  override val value: Double get() = beatsPerMinute.toDouble()
+internal data class MongoHeartRate(val date: Long, val beatsPerMinute: Int): MongoDateValue {
+  override fun toDateValue() = DateValue(date, beatsPerMinute)
 }
 
 @MongoCollection("activity")
 internal data class MongoHeartRateActivity(
     @SerializedName("samplingStart")
     @BsonProperty("samplingStart")
-    override val date: Long,
+    val start: String,
     val heartRate: Int,
-    val eventType: String = "HeartRate"):
-  MongoDateValue {
-  override val value: Double get() = heartRate.toDouble()
+    val eventType: String = "HeartRate"): MongoDateValue {
+
+  override fun toDateValue() = DateValue(Instant.parse(start), heartRate)
 }
 
 
@@ -25,28 +26,9 @@ internal data class MongoHeartRateActivity(
 internal data class MongoHeartRateTreatment(
     @SerializedName("samplingStart")
     @BsonProperty("samplingStart")
-    override val date: Long,
+    val date: Long,
     val heartRate: Int,
     val eventType: String = "HeartRate"):
   MongoDateValue {
-  override val value: Double get() = heartRate.toDouble()
+  override fun toDateValue() = DateValue(date, heartRate)
 }
-
-
-/*
-hr1 = read_cached_collection(
-    'activity',
-    [('samplingStart', 'date'), ('samplingEnd', 'date_end'), ('heartRate', 'heart_rate')],
-    {'eventType': 'HeartRate', 'samplingStart': {'$gt': START, '$lt': END}},
-    limit=0)
-hr2 = read_cached_collection(
-    'treatments',
-    [('samplingStart', 'date'), ('samplingEnd', 'date_end'), ('heartRate', 'heart_rate')],
-    {'eventType': 'HeartRate', 'samplingStart': {'$gt': START, '$lt': END}},
-    limit=0)
-hr3 = read_cached_collection(
-    'heartrate',
-    [('created_at', 'date_end'), ('duration', 'duration_sec'), ('beatsPerMinute', 'heart_rate')],
-    {'isValid': True, 'created_at': {'$gt': START, '$lt': END}},
-    limit=0)
- */

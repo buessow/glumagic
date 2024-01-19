@@ -2,13 +2,14 @@ package cc.buessow.glumagic.mongodb
 
 import cc.buessow.glumagic.input.MlProfileSwitch
 import com.google.gson.GsonBuilder
+import com.google.gson.annotations.SerializedName
 import org.bson.codecs.pojo.annotations.BsonProperty
 import java.time.Duration
 import java.time.Instant
 
 @MongoCollection("treatments")
 internal data class MongoProfileSwitch(
-    @BsonProperty("created_at") val createdAt: String?,
+    @SerializedName("created_at") @BsonProperty("created_at") val createdAt: String?,
     val date: Long?,
     val originalProfileName: String?,
     val originalDuration: Long?,

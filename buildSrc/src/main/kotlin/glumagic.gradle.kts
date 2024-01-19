@@ -1,4 +1,5 @@
 import com.adarshr.gradle.testlogger.TestLoggerExtension
+import com.adarshr.gradle.testlogger.theme.ThemeType
 
 plugins {
   id("com.adarshr.test-logger")
@@ -6,6 +7,7 @@ plugins {
 }
 
 configure<TestLoggerExtension> {
+  theme = ThemeType.MOCHA
   showPassed = false
   showSkipped = false
   showFailed = true

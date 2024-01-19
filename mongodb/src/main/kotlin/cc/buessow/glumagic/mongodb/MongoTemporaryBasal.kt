@@ -1,12 +1,14 @@
 package cc.buessow.glumagic.mongodb
 
 import cc.buessow.glumagic.input.MlTemporaryBasalRate
+import com.google.gson.annotations.SerializedName
 import org.bson.codecs.pojo.annotations.BsonProperty
 import java.time.Duration
 import java.time.Instant
 
 @MongoCollection("treatments")
 internal data class MongoTemporaryBasal(
+    @SerializedName("created_at")
     @BsonProperty("created_at") val createdAt: String?,
     val date: Long?,
     val duration: Long?,

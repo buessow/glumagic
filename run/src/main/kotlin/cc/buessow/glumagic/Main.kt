@@ -10,21 +10,54 @@ import kotlinx.cli.*
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.OutputStreamWriter
-import java.time.Duration
-import java.time.Instant
-import java.time.ZoneId
+import java.time.*
+import java.time.format.DateTimeFormatterBuilder
 import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoField
 import java.time.temporal.ChronoUnit
+import java.time.temporal.TemporalQueries
 
 object Main {
 
-  val ArgTypeDateTime = object: ArgType<Instant>(true) {
+  internal val ArgTypeDateTime = object: ArgType<Instant>(true) {
+    private val formatter = DateTimeFormatterBuilder()
+        .parseLenient()
+        .appendValue(ChronoField.YEAR, 4)
+        .appendLiteral('-')
+        .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+        .appendLiteral('-')
+        .appendValue(ChronoField.DAY_OF_MONTH, 2)
+        .optionalStart()
+        .appendLiteral('T')
+        .appendValue(ChronoField.HOUR_OF_DAY, 2)
+        .appendLiteral(':')
+        .appendValue(ChronoField.MINUTE_OF_HOUR, 2)
+        .appendLiteral(':')
+        .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
+        .optionalEnd()
+        .optionalStart()
+        .appendZoneOrOffsetId()
+        .optionalEnd()
+        .toFormatter()
+    private val zoneIdOrOffsetQueries = listOf(TemporalQueries.offset(), TemporalQueries.zone())
+
     override val description: kotlin.String
       get() = "Date/time in ISO format yyyy-mm-ddTHH:MM:SSZ"
 
     override fun convert(value: kotlin.String, name: kotlin.String): Instant {
       try {
-        return Instant.parse(value)
+        val ta = formatter.parse(value)
+        return if (!ta.isSupported(ChronoField.HOUR_OF_DAY)) {
+          val date = LocalDate.from(ta)
+          Instant.ofEpochSecond(date.toEpochSecond(LocalTime.MIN, ZoneOffset.UTC))
+
+        } else if (zoneIdOrOffsetQueries.all { ta.query(it) == null }) {
+            val date = LocalDateTime.from(ta)
+            Instant.ofEpochSecond(date.toEpochSecond(ZoneOffset.UTC))
+
+          } else {
+            Instant.from(ta)
+          }
       } catch (e: DateTimeParseException) {
         throw ParsingException(
             "Option $name is expected to be in yyyy-mm-ddTHH:MM:SSZ format. '$value' is provided.")
@@ -32,7 +65,7 @@ object Main {
     }
   }
 
-  val ArgTypeInFile = object: ArgType<File>(true) {
+  internal val ArgTypeInFile = object: ArgType<File>(true) {
     override val description: kotlin.String
       get() = "Input file"
 
@@ -45,7 +78,7 @@ object Main {
     }
   }
 
-  val ArgTypeOutFile = object: ArgType<File>(true) {
+  internal val ArgTypeOutFile = object: ArgType<File>(true) {
     override val description: kotlin.String
       get() = "Output file"
 
