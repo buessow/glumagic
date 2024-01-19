@@ -5,6 +5,7 @@ import java.util.*
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    glumagic
 }
 
 group = "cc.buessow.glumagic"

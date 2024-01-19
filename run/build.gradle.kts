@@ -2,23 +2,16 @@ plugins {
     kotlin("jvm")
     java
     application
+    glumagic
 }
 
 group = "cc.buessow.glumagic"
 version = "1.0"
 val mainProjectClass = "cc.buessow.glumagic.Main"
 
-kotlin {
-    jvmToolchain(17)
-}
-
 application {
     applicationName = "glumagic-$version"
     mainClass.set(mainProjectClass)
-}
-
-tasks.test {
-    useJUnitPlatform()
 }
 
 dependencies {
@@ -30,7 +23,7 @@ dependencies {
 }
 
 tasks.register("fatJar", type = Jar::class) {
-    dependsOn(configurations.runtimeClasspath)
+    dependsOn("test", configurations.runtimeClasspath)
     archiveBaseName = "glumagic"
     manifest {
         attributes["Main-Class"] = mainProjectClass

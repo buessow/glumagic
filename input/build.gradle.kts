@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     `java-library`
+    glumagic
 }
 
 group = "cc.buessow.glumagic"
@@ -9,9 +10,7 @@ version = "1.0"
 kotlin {
     jvmToolchain(17)
 }
-
-tasks.test {
-    useJUnitPlatform()
+kotlinTestRegistry {
 }
 
 tasks.jar {
@@ -29,7 +28,6 @@ java {
 
 dependencies {
     implementation(kotlin("reflect"))
-
     implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.apache.commons.csv)

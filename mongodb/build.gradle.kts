@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     `java-library`
+    glumagic
 }
 
 group = "cc.buessow.glumagic"
@@ -16,7 +17,4 @@ dependencies {
     testImplementation(testLibs.bundles.base)
     testImplementation(testLibs.mongodb.javaServer)
     testImplementation(testLibs.okHttp3.mockWebServer)
-}
-tasks.test {
-    useJUnitPlatform()
 }
