@@ -16,17 +16,13 @@ class DataLoader(
   private val inputAt = inputFrom + config.trainingPeriod
   private val inputUpTo = inputAt + config.predictionPeriod
   private val intervals = inputFrom ..< inputUpTo step config.freq
-
+  private val carbAction = LogNormAction(config.carbAction)
+  private val insulinAction = LogNormAction(config.insulinAction)
 
   companion object {
     @VisibleForTesting
     internal val preFetch = Duration.ofMinutes(6)
 
-    @VisibleForTesting
-    internal val carbAction = LogNormAction(Duration.ofMinutes(45), sigma = 0.5)
-
-    @VisibleForTesting
-    internal val insulinAction = LogNormAction(Duration.ofMinutes(60), sigma = 0.5)
 
     fun getInputVector(input: InputProvider, time: Instant, config: Config) = runBlocking {
       DataLoader(input, time, config).getInputVector()
@@ -37,22 +33,27 @@ class DataLoader(
       val dl = DataLoader(input, time, config)
       val deferredGlucose = async { dl.loadGlucoseReadings() }
       val deferredHeartRate = async { dl.loadHeartRatesWithLong() }
-      val deferredCarbAction = async { dl.loadCarbAction() }
-      val deferredInsulinAction = async { dl.loadInsulinAction() }
+      val deferredCarbAction = async { dl.loadCarbEventsAndAction() }
+      val deferredInsulin = async { dl.loadInsulinEventsAndAction() }
 
       val gl = deferredGlucose.await()
       val hours = dl.intervals.map { ts -> OffsetDateTime.ofInstant(ts, config.zoneId).hour }
       val glSlope1 = dl.slope(gl)
       val glSlope2 = dl.slope(glSlope1)
 
+      val (carbs, carbAction) = deferredCarbAction.await()
+      val insulin = deferredInsulin.await()
       TrainingInput(date = dl.intervals.toList(),
                     hour = hours,
                     glucose = gl, glucoseSlope1 = glSlope1, glucoseSlope2 = glSlope2,
                     heartRate = deferredHeartRate.await().first(),
                     hrLong1 = deferredHeartRate.await()[1],
                     hrLong2 = deferredHeartRate.await()[2],
-                    carbAction = deferredCarbAction.await(),
-                    insulinAction = deferredInsulinAction.await())
+                    carbs = carbs,
+                    carbAction = carbAction,
+                    bolus = insulin.bolus,
+                    basal = insulin.basal,
+                    insulinAction = insulin.action)
     }
 
     @VisibleForTesting
@@ -111,9 +112,9 @@ class DataLoader(
         from: Instant,
         values: Iterable<DateValue>,
         to: Instant,
-        interval: Duration) = sequence {
+        interval: Duration,
+        fillIn: Duration = interval.multipliedBy(4)) = sequence {
 
-      val fillIn = interval.multipliedBy(4)
       var t = from
       var last: DateValue? = null
       for (curr in values) {
@@ -158,6 +159,23 @@ class DataLoader(
       }
     }
   }
+
+  private fun alignEvents(events: Iterable<DateValue>) = sequence {
+    val halfFreq = config.freq.dividedBy(2L)
+    val iter = events.iterator()
+
+    var event = iter.nextOrNull()
+    while (event != null && event.timestamp < inputFrom - halfFreq) event = iter.nextOrNull()
+
+    for (t in inputFrom ..< inputUpTo step config.freq) {
+      var carbs = 0.0
+      while (event != null && event.timestamp < t + halfFreq) {
+        carbs += event.value
+        event = iter.nextOrNull()
+      }
+      yield(carbs.toFloat())
+    }
+  }.toList()
 
   suspend fun loadGlucoseReadings(): List<Float> {
     val loadFrom: Instant = inputFrom - preFetch
@@ -287,23 +305,34 @@ class DataLoader(
         .map(Int::toFloat).toList()
   }
 
-  suspend fun loadCarbAction(): List<Float> {
-    return inputProvider.getCarbs(inputFrom - carbAction.maxAge, inputUpTo).let { cs ->
-      carbAction.valuesAt(cs, intervals).map(Double::toFloat)
-    }
+  suspend fun loadCarbEventsAndAction(): Pair<List<Float>, List<Float>> {
+    val carbs = inputProvider.getCarbs(inputFrom - LogNormAction.maxAge, inputUpTo)
+    return Pair(
+        alignEvents(carbs), carbAction.valuesAt(carbs, intervals).map(Double::toFloat))
   }
 
   private suspend fun loadBolusAction(): List<Float> {
-    return inputProvider.getBoluses(inputFrom - insulinAction.maxAge, inputUpTo).let { bs ->
+    return inputProvider.getBoluses(inputFrom - LogNormAction.maxAge, inputUpTo).let { bs ->
       insulinAction.valuesAt(bs, intervals).map(Double::toFloat)
     }
   }
 
-  suspend fun loadInsulinAction(): List<Float> = coroutineScope {
-    val (bolusAction, basalAction) = awaitAll(
-        async { loadBolusAction() },
-        async { loadBasalActions() })
-    bolusAction.zip(basalAction).map { (bolus, basal) -> bolus + basal }.toList()
+  data class InsulinEvents(
+      val bolus: List<Float>,
+      val basal: List<Float>,
+      val action: List<Float>)
+
+  suspend fun loadInsulinEventsAndAction(): InsulinEvents = coroutineScope {
+    val (bolus, basal) = awaitAll(
+        async { inputProvider.getBoluses(inputFrom - LogNormAction.maxAge, inputUpTo) },
+        async { loadBasalRates() })
+    val bolusAction = insulinAction.valuesAt(bolus, intervals).map(Double::toFloat)
+    val basalAction = insulinAction.valuesAt(basal, intervals).map(Double::toFloat)
+
+    InsulinEvents(
+        bolus =  alignEvents(bolus),
+        basal =  alignEvents(basal),
+        action = bolusAction.zip(basalAction).map { (bo, ba) -> bo + ba }.toList())
   }
 
   private fun slope(values: List<Float>): List<Float> {
@@ -323,8 +352,8 @@ class DataLoader(
           async { loadGlucoseReadings() },
           async { loadLongHeartRates() },
           async { loadHeartRates() },
-          async { loadCarbAction() },
-          async { loadInsulinAction() },
+          async { loadCarbEventsAndAction().second },
+          async { loadInsulinEventsAndAction().action },
       )
     }
     val localTime = OffsetDateTime.ofInstant(inputFrom, config.zoneId)

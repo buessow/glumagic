@@ -1,13 +1,18 @@
 package cc.buessow.glumagic.input
 
+import org.jetbrains.annotations.VisibleForTesting
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.*
 
-class LogNormAction(
-    private var mu: Double, private val sigma: Double = 1.0) {
+internal class LogNormAction(private var mu: Double, private val sigma: Double = 1.0) {
 
-  val maxAge: Duration = Duration.ofHours(4)
+  companion object {
+    @VisibleForTesting
+    internal val maxAge: Duration = Duration.ofHours(4)
+  }
+
+  constructor(config: Config.LogNorm) : this(config.mu, config.sigma)
 
   constructor(timeToPeak: Duration, sigma: Double = 1.0) : this(
       mu = ln(timeToPeak.toMillis() / 3600_000.0) + sigma * sigma,

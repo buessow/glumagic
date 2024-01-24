@@ -7,12 +7,15 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlin.math.ln
 
 class Config(
     @SerializedName("trainingPeriodMinutes")
     val trainingPeriod: Duration,
     @SerializedName("predictionPeriodMinutes")
     val predictionPeriod: Duration = Duration.ZERO,
+    val carbAction: LogNorm,
+    val insulinAction: LogNorm,
     @SerializedName("hrLongDurationMinutes")
     val hrLong: List<Duration>,
     val hrHighThreshold: Int,
@@ -22,6 +25,17 @@ class Config(
     zoneId: ZoneId?,
 ) {
 
+  class LogNorm(
+      @SerializedName("mu") val explicitMu: Double? = null,
+      private val peakInMinutes: Int? = null,
+      val sigma: Double) {
+
+    init {
+      assert(explicitMu != null || peakInMinutes != null)
+      assert(explicitMu == null || peakInMinutes == null)
+    }
+    val mu: Double get() = explicitMu ?: ln(peakInMinutes!! / 60.0) + sigma * sigma
+  }
 
   private val providedZoneId = zoneId
   val zoneId: ZoneId get() = providedZoneId ?: ZoneOffset.UTC

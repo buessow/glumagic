@@ -94,7 +94,6 @@ object Main {
     }
   }
 
-
   private fun dump(input: InputProvider) = runBlocking {
     for (dv in input.getGlucoseReadings(Instant.now().minusSeconds(1800L))) {
       println("glucose $dv")
@@ -102,12 +101,10 @@ object Main {
     for (dv in input.getCarbs(Instant.now().minusSeconds(18000L))) {
       println("carbs $dv")
     }
-    val bpss = input
-        .getBasalProfileSwitches(Instant.now().minusSeconds(1800L))
+    val bpss = input.getBasalProfileSwitches(Instant.now().minusSeconds(1800L))
     println("profile switch $bpss")
 
-    for (tb in input.getTemporaryBasalRates(Instant.now().minus(2L, ChronoUnit.HOURS))
-        ) {
+    for (tb in input.getTemporaryBasalRates(Instant.now().minus(2L, ChronoUnit.HOURS))) {
       println("temp $tb")
     }
   }
@@ -117,6 +114,8 @@ object Main {
     val config1 = Config(
         trainingPeriod = Duration.between(from, upto),
         predictionPeriod = Duration.ZERO,
+        carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
+        insulinAction = Config.LogNorm(peakInMinutes = 60, sigma = 0.5),
         hrLong = config.hrLong,
         hrHighThreshold = config.hrHighThreshold,
         freq = config.freq,
@@ -136,6 +135,8 @@ object Main {
     return configFile?.let { Config.fromJson(configFile) } ?: Config(
         trainingPeriod = Duration.ZERO,
         predictionPeriod = Duration.ZERO,
+        carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
+        insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
         hrLong = listOf(Duration.ofHours(12), Duration.ofHours(24)),
         hrHighThreshold = 120,
         freq = Duration.ofMinutes(5),

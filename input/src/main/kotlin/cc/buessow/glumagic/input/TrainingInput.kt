@@ -17,7 +17,10 @@ data class TrainingInput(
     val heartRate: List<Float>,
     val hrLong1: List<Float>,
     val hrLong2: List<Float>,
+    val carbs: List<Float>,
     val carbAction: List<Float>,
+    val bolus: List<Float>,
+    val basal: List<Float>,
     val insulinAction: List<Float>,
 ) {
 

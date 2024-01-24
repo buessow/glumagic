@@ -1,5 +1,10 @@
 plugins {
   `kotlin-dsl`
+  `java-library`
+}
+
+tasks.compileJava {
+
 }
 
 kotlin {

@@ -43,6 +43,8 @@ class End2EndTest {
       val upto = Instant.parse("2024-01-01T00:00:00Z")
       val config = Config(
           trainingPeriod = Duration.between(from, upto),
+          carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
+          insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
           hrLong = listOf(Duration.ofHours(24), Duration.ofHours(48)),
           hrHighThreshold = 120,
           zoneId = ZoneOffset.UTC)
