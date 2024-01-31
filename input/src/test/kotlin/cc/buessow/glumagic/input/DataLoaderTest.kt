@@ -21,7 +21,7 @@ class DataLoaderTest {
       carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
       insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
       hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-      zoneId = ZoneId.of("UTC"))
+      zone = ZoneId.of("UTC"))
 
   private val now = Instant.parse("2013-12-13T20:00:00Z")
   private val from = now - config.trainingPeriod
@@ -180,7 +180,7 @@ class DataLoaderTest {
         insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
         hrHighThreshold = 99,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-        zoneId = ZoneId.of("UTC"))
+        zone = ZoneId.of("UTC"))
     val dp = mock<InputProvider> {
       onBlocking { getHeartRates(any(), any()) }.thenReturn(
         (dataFrom ..< upto step config.freq).mapIndexed { i, t ->
@@ -211,7 +211,7 @@ class DataLoaderTest {
         insulinAction = Config.LogNorm(peakInMinutes = 60, sigma = 0.5),
         hrHighThreshold = 99,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-        zoneId = ZoneId.of("UTC"))
+        zone = ZoneId.of("UTC"))
     val dp = mock<InputProvider> {
       onBlocking { getHeartRates(any(), any()) }.thenReturn(
           (dataFrom ..< upto step config.freq).mapIndexed { i, t ->
@@ -527,7 +527,7 @@ class DataLoaderTest {
         insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
         hrHighThreshold = 120,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-        zoneId = ZoneId.of("CET"))
+        zone = ZoneId.of("CET"))
     config.trainingPeriod / config.freq
 
     val input: InputProvider = mock() {
@@ -566,7 +566,7 @@ class DataLoaderTest {
         insulinAction = Config.LogNorm(peakInMinutes = 60, sigma = 0.5),
         hrHighThreshold = 120,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-        zoneId = ZoneId.of("CET"))
+        zone = ZoneId.of("CET"))
     val dates = (at..<(at + config.trainingPeriod) step config.freq).toList()
 
     val input: InputProvider = mock() {

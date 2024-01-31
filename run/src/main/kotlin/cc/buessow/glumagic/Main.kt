@@ -119,7 +119,7 @@ object Main {
         hrLong = config.hrLong,
         hrHighThreshold = config.hrHighThreshold,
         freq = config.freq,
-        zoneId = config.zoneId)
+        zone = config.zoneId)
     val trainingData = DataLoader.getTrainingData(input, from, config1)
     println("Loaded ${trainingData.date.size} values")
     if (outFile == null) {
@@ -140,7 +140,7 @@ object Main {
         hrLong = listOf(Duration.ofHours(12), Duration.ofHours(24)),
         hrHighThreshold = 120,
         freq = Duration.ofMinutes(5),
-        zoneId = ZoneId.of("CET"))
+        zone = ZoneId.of("CET"))
   }
 
   private class QueryApi: Subcommand("api", "Query Mongo API") {

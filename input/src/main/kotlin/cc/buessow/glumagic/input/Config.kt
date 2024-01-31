@@ -22,7 +22,8 @@ class Config(
     @SerializedName("freqMinutes")
     val freq: Duration = Duration.ofMinutes(5),
     val testData: List<TestData> = emptyList(),
-    zoneId: ZoneId?,
+    @SerializedName("zoneId")
+    private val zone: ZoneId?,
 ) {
 
   class LogNorm(
@@ -34,11 +35,10 @@ class Config(
       assert(explicitMu != null || peakInMinutes != null)
       assert(explicitMu == null || peakInMinutes == null)
     }
-    val mu: Double get() = explicitMu ?: ln(peakInMinutes!! / 60.0) + sigma * sigma
+    val mu: Double get() = explicitMu ?: ln(peakInMinutes!! / 60.0) + (sigma * sigma)
   }
 
-  private val providedZoneId = zoneId
-  val zoneId: ZoneId get() = providedZoneId ?: ZoneOffset.UTC
+  val zoneId: ZoneId get() = zone ?: ZoneOffset.UTC
 
   companion object {
     fun fromJson(input: InputStream): Config = JsonParser.fromJson(input)

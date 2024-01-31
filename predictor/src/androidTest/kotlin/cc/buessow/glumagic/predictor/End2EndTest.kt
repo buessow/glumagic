@@ -47,7 +47,7 @@ class End2EndTest {
           insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
           hrLong = listOf(Duration.ofHours(24), Duration.ofHours(48)),
           hrHighThreshold = 120,
-          zoneId = ZoneOffset.UTC)
+          zone = ZoneOffset.UTC)
 
       val td = runBlocking { DataLoader.getTrainingData(input, from, config) }
 

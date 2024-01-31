@@ -6,10 +6,7 @@ import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 import java.io.*
-import java.time.Duration
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.zip.GZIPOutputStream
 
@@ -54,6 +51,21 @@ internal object JsonParser {
     @Suppress("SpellCheckingInspection")
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssxxxxx")
     val builder = GsonBuilder()
+    builder.registerTypeAdapter(
+        ZoneId::class.java,
+        object: TypeAdapter<ZoneId>() {
+          override fun write(out: JsonWriter, value: ZoneId?) {
+            if (value == null) {
+              out.nullValue()
+            } else {
+              out.value(value.id)
+            }
+          }
+          override fun read(jr: JsonReader): ZoneId {
+            val id = jr.nextString()
+            return ZoneId.of(id)
+          }
+        })
     builder.registerTypeAdapter(
         LocalDateTime::class.java,
         object : TypeAdapter<LocalDateTime>() {
