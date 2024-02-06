@@ -49,7 +49,7 @@ class Config(
       // hour of day and long heart rates
       1 + hrLong.size +
           // glucose slope and slope of slope
-          2 * (trainingPeriod / freq) +
+          2 * ((trainingPeriod + predictionPeriod) / freq) +
           // carb, insulin and heart rate
           3 * ((trainingPeriod + predictionPeriod) / freq)
 
@@ -73,6 +73,7 @@ class Config(
       val at: Instant,
       val inputData: TestInputData,
       val inputVector: FloatArray,
+      val basal: List<DateValue>?,
       val outputSlopes: List<Float>,
       val outputGlucose: List<Float>,
       val heartRates: List<Double>,

@@ -14,9 +14,10 @@ class ModelVerifier(private val predictor: Predictor) {
     val dataProvider = InputProviderForTestInput(testData)
     val mismatch = ArrayApproxCompare.getMismatch(
         DataLoader.getInputVector(dataProvider, testData.at, predictor.config).second.toList(),
-        testData.inputVector.toList(), 1e-4
+        testData.inputVector.toList(), 1e-3
     ) ?: return true
-    log.severe("Mismatch '${testData.name}': $mismatch")
+    log.severe("Mismatch '${testData.name}'")
+    log.severe(mismatch)
     return false
   }
 

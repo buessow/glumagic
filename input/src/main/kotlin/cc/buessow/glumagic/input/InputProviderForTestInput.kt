@@ -18,7 +18,16 @@ class InputProviderForTestInput(private val testData: Config.TestData) : InputPr
   override suspend fun getLongHeartRates(at: Instant, threshold: Int, durations: List<Duration>) =
     testData.hrLongCounts
 
-  override suspend fun getBasalProfileSwitches(from: Instant, upto: Instant?): MlProfileSwitches? = null
+  override suspend fun getBasalProfileSwitches(from: Instant, upto: Instant?): MlProfileSwitches? {
+    val basals = testData.basal?.takeUnless (List<DateValue>::isEmpty) ?: return null
+    val pss = basals.map { dv ->
+      MlProfileSwitch(
+          name = "test",
+          start = dv.timestamp,
+          basalRates = listOf(Duration.ofDays(1) to dv.value))
+    }
+    return MlProfileSwitches(pss[0], pss[0], pss.drop(1))
+  }
 
   override suspend fun getTemporaryBasalRates(from: Instant, upto: Instant?): List<MlTemporaryBasalRate> =
     emptyList()

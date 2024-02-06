@@ -30,13 +30,9 @@ class ArrayApproxCompare {
         eps: Double): String? {
       val mismatch = firstMismatch(expected.toList(), actual.toList(), eps) ?: return null
       val form = { f: Number -> "%.3f".format(f) + if(f is Float) "F" else "" }
-      val a =
-        actual.mapIndexed { i, f -> if (i == mismatch) "**${form(f)}" else form(f) }
-            .joinToString(", ")
-      val e =
-        expected.mapIndexed { i, f -> if (i == mismatch) "**${form(f)}" else form(f) }
-            .joinToString(", ")
-      return "expected [$e]\n but was [$a]"
+      val a = actual.mapIndexed { i, f -> if (i == mismatch) "**${form(f)}" else form(f) }.joinToString()
+      val e = expected.mapIndexed { i, f -> if (i == mismatch) "**${form(f)}" else form(f) }.joinToString()
+      return "exp:${"%3d".format(mismatch)} [$e]\nbut was [$a]"
     }
   }
 }

@@ -292,7 +292,6 @@ class DataLoader(
     adjustRates(applyTemporaryBasals(basals.await(), tempBasals.await(), inputUpTo))
   }
 
-
   private suspend fun loadBasalActions(): List<Float> {
     return loadBasalRates().let { basals ->
       insulinAction.valuesAt(basals, intervals).map(Double::toFloat)
@@ -356,18 +355,20 @@ class DataLoader(
           async { loadInsulinEventsAndAction().action },
       )
     }
-    val localTime = OffsetDateTime.ofInstant(inputFrom, config.zoneId)
+    val localTime = OffsetDateTime.ofInstant(inputAt, config.zoneId)
     val glSlope = slope(listOf(gl, listOf(gl.last())).flatten())
     val glSlop2 = slope(glSlope)
 
     val input = mutableListOf<Float>()
     input.add(localTime.hour.toFloat())
-    input.addAll(hrl)
     input.addAll(glSlope.dropLast(1))
+    input.addAll(Array(config.predictionPeriod / config.freq) { 0F })
     input.addAll(glSlop2.dropLast(1))
+    input.addAll(Array(config.predictionPeriod / config.freq) { 0F })
     input.addAll(ia)
     input.addAll(ca)
     input.addAll(hr)
+    input.addAll(hrl)
 
     assert(input.size == config.inputSize) {
       "Input size is ${input.size} instead of ${config.inputSize}"
