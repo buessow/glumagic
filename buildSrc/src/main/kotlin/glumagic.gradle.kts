@@ -14,6 +14,14 @@ configure<TestLoggerExtension> {
   showOnlySlow = false
 }
 
+configure<JavaPluginExtension> {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(Versions.JVM)
+  }
+  sourceCompatibility = Versions.sourceCompatibility
+  targetCompatibility = Versions.targetCompatibility
+}
+
 tasks.withType<Test> {
   useJUnitPlatform()
 }

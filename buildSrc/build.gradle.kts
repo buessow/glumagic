@@ -3,12 +3,8 @@ plugins {
   `java-library`
 }
 
-tasks.compileJava {
-
-}
-
 kotlin {
-  jvmToolchain(17)
+  jvmToolchain(11)
 }
 
 repositories {

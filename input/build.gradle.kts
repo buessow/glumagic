@@ -8,7 +8,7 @@ group = "cc.buessow.glumagic"
 version = "1.0"
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(Versions.JVM)
 }
 kotlinTestRegistry {
 }
@@ -16,7 +16,8 @@ kotlinTestRegistry {
 tasks.jar {
     archiveBaseName = "cc.buessow.glumagic.input"
     manifest {
-        attributes(mapOf("Implementation-Title" to project.name,
+        attributes(mapOf(
+            "Implementation-Title" to project.name,
             "Implementation-Version" to project.version))
     }
 }

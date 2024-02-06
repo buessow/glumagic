@@ -1,4 +1,5 @@
 @file:Suppress("UnstableApiUsage")
+import com.android.build.gradle.internal.utils.getDesugarLibConfig
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import java.util.*
@@ -15,11 +16,16 @@ version = "1.0"
 val localProperties = Properties()
 File(rootProject.projectDir, "local.properties").inputStream().use { localProperties.load(it) }
 
+
+kotlin {
+  jvmToolchain(Versions.JVM)
+}
+
 android {
   namespace = "cc.buessow.glumagic"
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = Versions.sourceCompatibility
+    targetCompatibility = Versions.targetCompatibility
   }
   compileSdk = 30
   buildToolsVersion = "34.0.0"
@@ -32,6 +38,10 @@ android {
       isIncludeAndroidResources = false
     }
     android {
+      compileOptions {
+        sourceCompatibility = Versions.sourceCompatibility
+        targetCompatibility = Versions.targetCompatibility
+      }
     }
   }
   buildFeatures.buildConfig = true

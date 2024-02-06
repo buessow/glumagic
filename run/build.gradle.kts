@@ -14,6 +14,10 @@ application {
     mainClass.set(mainProjectClass)
 }
 
+kotlin {
+    jvmToolchain(Versions.JVM)
+}
+
 dependencies {
     implementation(project(":input"))
     implementation(project(":mongodb"))

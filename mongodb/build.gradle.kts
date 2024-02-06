@@ -4,6 +4,10 @@ plugins {
     glumagic
 }
 
+kotlin {
+    jvmToolchain(Versions.JVM)
+}
+
 group = "cc.buessow.glumagic"
 version = "unspecified"
 

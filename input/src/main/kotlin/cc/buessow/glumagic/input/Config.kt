@@ -35,7 +35,7 @@ class Config(
       assert(explicitMu != null || peakInMinutes != null)
       assert(explicitMu == null || peakInMinutes == null)
     }
-    val mu: Double get() = explicitMu ?: ln(peakInMinutes!! / 60.0) + (sigma * sigma)
+    val mu: Double get() = explicitMu ?: (ln(peakInMinutes!! / 60.0) + (sigma * sigma))
   }
 
   val zoneId: ZoneId get() = zone ?: ZoneOffset.UTC

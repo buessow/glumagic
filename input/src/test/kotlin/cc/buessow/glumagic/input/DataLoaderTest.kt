@@ -230,7 +230,7 @@ class DataLoaderTest {
     assertEquals(count, values[0].size)
     assertEquals(count, values[1].size)
     assertEquals(count, values[2].size)
-    assertCollectionEqualsF(values[1], *FloatArray(count) { i -> 8F }, eps = 0.1)
+    assertCollectionEqualsF(values[1], *FloatArray(count) { _ -> 8F }, eps = 0.1)
     assertCollectionEqualsF(values[2], *FloatArray(count) { 16F }, eps = 0.1)
     verify(dp).getHeartRates(dataFrom, upto)
     Unit

@@ -2,19 +2,23 @@
 <project version="4">
   <component name="deploymentTargetDropDown">
     <value>
-      <entry key="Tests in 'cc'">
-        <State />
-      </entry>
-      <entry key="Tests in 'cc.buessow.glumagic.predictor'">
-        <State />
-      </entry>
-      <entry key="loadAndVerifyModel()">
-        <State />
+      <entry key="All Tests">
+        <State>
+          <runningDeviceTargetSelectedWithDropDown>
+            <Target>
+              <type value="RUNNING_DEVICE_TARGET" />
+              <deviceKey>
+                <Key>
+                  <type value="VIRTUAL_DEVICE_PATH" />
+                  <value value="$USER_HOME$/.android/avd/Pixel_4_API_33.avd" />
+                </Key>
+              </deviceKey>
+            </Target>
+          </runningDeviceTargetSelectedWithDropDown>
+          <timeTargetWasSelectedWithDropDown value="2024-02-06T20:44:14.634661Z" />
+        </State>
       </entry>
       <entry key="predictor">
-        <State />
-      </entry>
-      <entry key="run()">
         <State />
       </entry>
     </value>

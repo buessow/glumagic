@@ -9,7 +9,7 @@ pluginManagement {
     plugins {
         kotlin("jvm") version "1.9.20"
         id("kotlin-android") version "8.2.0"
-        id("com.android.library") version "8.2.0"  apply false
+        id("com.android.library") version "8.2.0" apply false
         id("com.adarshr.test-logger") version  "4.0.0"
     }
     resolutionStrategy {
