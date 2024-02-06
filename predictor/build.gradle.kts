@@ -1,5 +1,4 @@
 @file:Suppress("UnstableApiUsage")
-import com.android.build.gradle.internal.utils.getDesugarLibConfig
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import java.util.*
