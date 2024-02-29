@@ -221,18 +221,16 @@ class MongoDbInputProviderTest {
             null,
             duration?.toMinutes(),
             null,
-            rate?.times(100)?.toInt()))
+            rate?.minus(1.0)?.times(100)?.toInt()))
     return MlTemporaryBasalRate(timestamp, duration ?: Duration.ZERO, rate ?: 1.0)
   }
 
   @Test
   fun getTempBasal() = runBlocking {
-    val tb = runBlocking {
-      createTempBasal(
-          Instant.parse("2020-01-01T01:10:00Z"),
-          Duration.ofMinutes(20),
-          1.1)
-    }
+    val tb = createTempBasal(
+        Instant.parse("2020-01-01T01:10:00Z"),
+        Duration.ofMinutes(20),
+        1.1)
     assertEquals(listOf(tb), ip.getTemporaryBasalRates(from))
   }
 }

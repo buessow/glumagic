@@ -54,7 +54,7 @@ android {
         .map { (k, v) -> k.toString() to v.toString() }
         .filter { (k, _) -> k.startsWith("mongo.") }
         .forEach { (k, v) ->
-          buildConfigField("String", k.replace('.', '_').uppercase(), v)
+          buildConfigField("String", k.replace('.', '_').uppercase(), """"$v"""")
     }
   }
   packaging {

@@ -22,6 +22,6 @@ internal data class MongoTemporaryBasal(
   fun toMlTemporaryBasalRate() = MlTemporaryBasalRate(
       timestamp = created,
       duration = duration?.let { min -> Duration.ofMinutes(min)} ?: Duration.ZERO,
-      rate = (percent ?: 100) / 100.0,
+      rate = 1.0 + (percent ?: 100) / 100.0,
       basal = rate)
 }

@@ -18,6 +18,20 @@ kotlin {
     jvmToolchain(Versions.JVM)
 }
 
+tasks.register("copyLocalProperties") {
+    doLast {
+        val sourceFile = file(project.rootDir.absolutePath + "/local.properties")
+        val destinationDir = file("src/test/resources")
+        println("copy $sourceFile to $destinationDir")
+        copy {
+            from(sourceFile)
+            into(destinationDir)
+        }
+    }
+}
+
+tasks.getByName("processResources").dependsOn("copyLocalProperties")
+
 dependencies {
     implementation(project(":input"))
     implementation(project(":mongodb"))

@@ -23,6 +23,13 @@ class DataLoader(
     @VisibleForTesting
     internal val preFetch = Duration.ofMinutes(6)
 
+    private fun assertZero(value: Int, text: String) {
+      assert(value == 0) { "expect no $text, got $value" }
+    }
+    private fun assertWithin(name: String, values: List<Float>, min: Float, max: Float) {
+      assertZero(values.count { !it.isNaN() && it < min}, "$name < $min")
+      assertZero(values.count { !it.isNaN() && it > max}, "$name > $max")
+    }
 
     fun getInputVector(input: InputProvider, time: Instant, config: Config) = runBlocking {
       DataLoader(input, time, config).getInputVector()
@@ -36,6 +43,11 @@ class DataLoader(
       val deferredCarbAction = async { dl.loadCarbEventsAndAction() }
       val deferredInsulin = async { dl.loadInsulinEventsAndAction() }
 
+      assertWithin("glucose", deferredGlucose.await(), 20F, 500F)
+      assertWithin("hear rate", deferredHeartRate.await()[0], 20F, 300F)
+      assertWithin("long heart rate 1", deferredHeartRate.await()[1], 0F, 10000F)
+      assertWithin("long heart rate 2", deferredHeartRate.await()[2], 0F, 10000F)
+
       val gl = deferredGlucose.await()
       val hours = dl.intervals.map { ts -> OffsetDateTime.ofInstant(ts, config.zoneId).hour }
       val glSlope1 = dl.slope(gl)
@@ -43,6 +55,13 @@ class DataLoader(
 
       val (carbs, carbAction) = deferredCarbAction.await()
       val insulin = deferredInsulin.await()
+
+      assertWithin("carbs", carbs, 0F, 200F)
+      assertWithin("carb action", carbAction, 0F, 200F)
+      assertWithin("insulin bolus", insulin.bolus, 0F, 100F)
+      assertWithin("insulin basal", insulin.basal, 0F, 100F)
+      assertWithin("insulin action", insulin.action, 0F, 100F)
+
       TrainingInput(date = dl.intervals.toList(),
                     hour = hours,
                     glucose = gl, glucoseSlope1 = glSlope1, glucoseSlope2 = glSlope2,
@@ -355,6 +374,12 @@ class DataLoader(
           async { loadInsulinEventsAndAction().action },
       )
     }
+    assertWithin("glucose", gl, 20F, 500F)
+    assertWithin("long heart rate", hrl, 0F, 10000F)
+    assertWithin("hear rate", hr, 20F, 300F)
+    assertWithin("carb action", ca, 0F, 100F)
+    assertWithin("insulin action", ia, 0F, 100F)
+
     val localTime = OffsetDateTime.ofInstant(inputAt, config.zoneId)
     val glSlope = slope(listOf(gl, listOf(gl.last())).flatten())
     val glSlop2 = slope(glSlope)

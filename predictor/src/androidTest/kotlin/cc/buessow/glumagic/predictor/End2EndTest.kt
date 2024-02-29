@@ -109,10 +109,10 @@ class End2EndTest {
       assertNull(ArrayApproxCompare.getMismatch( // Insulin Action
           inputVector.toList().drop(1 + 2 * period).take(period),
           listOf(
-              2.345F, 1.833F, 1.408F, 1.065F, 0.796F, 0.590F, 0.442F, 0.349F, 0.309F, 0.321F,
-              0.373F, 0.452F, 0.541F, 0.627F, 0.700F, 0.761F, 0.818F, 0.875F, 0.934F, 0.997F,
-              1.062F, 1.128F, 1.188F, 1.229F, 1.243F, 1.224F, 1.169F, 1.084F, 0.975F, 0.865F,
-              0.787F, 0.776F, 0.837F, 0.941F, 1.043F, 1.139F),
+              2.345F, 1.833F, 1.408F, 1.065F, 0.796F, 0.590F, 0.442F, 0.351F, 0.319F, 0.351F,
+              0.445F, 0.587F, 0.749F, 0.908F, 1.052F, 1.188F, 1.326F, 1.472F, 1.618F, 1.756F,
+              1.883F, 1.998F, 2.091F, 2.145F, 2.143F, 2.076F, 1.947F, 1.768F, 1.558F, 1.348F,
+              1.180F, 1.094F, 1.097F, 1.158F, 1.233F, 1.312F),
           eps=1e-3))
       assertNull(ArrayApproxCompare.getMismatch( // Carb Action
           inputVector.toList().drop(1 + 3 * period).take(period),
@@ -147,8 +147,8 @@ class End2EndTest {
       val glucosePredictions = p.predictGlucose(at, input)
       assertNull(ArrayApproxCompare.getMismatch(
           glucosePredictions,
-          listOf(80.333, 80.327, 80.949, 81.498, 81.595, 81.900,
-                 82.091, 82.303, 83.065, 83.830, 85.246, 86.257),
+          listOf(80.349, 80.415, 81.223, 82.072, 82.467, 83.029,
+                 83.347, 83.526, 84.138, 84.676, 85.787, 86.391),
           1e-2))
     }
   }
