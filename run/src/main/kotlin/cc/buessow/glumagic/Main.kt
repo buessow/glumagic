@@ -114,8 +114,8 @@ object Main {
     val config1 = Config(
         trainingPeriod = Duration.between(from, upto),
         predictionPeriod = Duration.ZERO,
-        carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-        insulinAction = Config.LogNorm(peakInMinutes = 60, sigma = 0.5),
+        carbAction = config.carbAction,
+        insulinAction = config.insulinAction,
         hrLong = config.hrLong,
         hrHighThreshold = config.hrHighThreshold,
         freq = config.freq,
