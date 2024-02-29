@@ -311,6 +311,7 @@ class DataLoader(
     adjustRates(applyTemporaryBasals(basals.await(), tempBasals.await(), inputUpTo))
   }
 
+  @Suppress("Unused")
   private suspend fun loadBasalActions(): List<Float> {
     return loadBasalRates().let { basals ->
       insulinAction.valuesAt(basals, intervals).map(Double::toFloat)
@@ -329,6 +330,7 @@ class DataLoader(
         alignEvents(carbs), carbAction.valuesAt(carbs, intervals).map(Double::toFloat))
   }
 
+  @Suppress("Unused")
   private suspend fun loadBolusAction(): List<Float> {
     return inputProvider.getBoluses(inputFrom - LogNormAction.maxAge, inputUpTo).let { bs ->
       insulinAction.valuesAt(bs, intervals).map(Double::toFloat)

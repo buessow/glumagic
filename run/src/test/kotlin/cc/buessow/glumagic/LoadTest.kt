@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.io.File
+import java.io.InputStream
 import java.nio.file.Files
 import java.util.*
 import kotlin.io.path.exists
@@ -16,15 +17,14 @@ class LoadTest {
     private lateinit var mongoApiUrl: String
     private lateinit var configFile: File
 
-    private fun <K, V> assertContains(map: Map<K, V>, key: K) {
-      assertTrue(map.contains(key), "expect contains '$key'")
-    }
+    private fun getResource(name: String): InputStream =
+      LoadTest::class.java.classLoader.getResourceAsStream(name)!!
 
     @JvmStatic
     @BeforeAll
-    fun loadProperties(): Unit {
+    fun loadProperties() {
       val properties = Properties()
-      properties.load(javaClass.classLoader.getResourceAsStream("local.properties"))
+      properties.load(getResource("local.properties"))
       mongoDatabase = properties.getProperty("mongo.database")
       mongoApiKey = properties.getProperty("mongo.api_key")
       mongoApiUrl = properties.getProperty("mongo.api_url")
@@ -32,9 +32,9 @@ class LoadTest {
 
     @JvmStatic
     @BeforeAll
-    fun loadConfig(): Unit {
+    fun loadConfig() {
       configFile = Files.createTempFile("glucose_model", ".json").toFile()
-      val input = javaClass.classLoader.getResourceAsStream("glucose_model.json")
+      val input = getResource("glucose_model.json")
       configFile.outputStream().use { out -> input.copyTo(out) }
     }
   }
