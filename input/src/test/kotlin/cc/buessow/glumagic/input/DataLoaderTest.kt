@@ -19,7 +19,7 @@ class DataLoaderTest {
       predictionPeriod = ofMinutes(15),
       hrHighThreshold = 120,
       carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-      insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
+      insulinAction = Config.LogNorm(peakInMinutes = 60, sigma = 0.5),
       hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
       zone = ZoneId.of("UTC"))
 
@@ -306,7 +306,7 @@ class DataLoaderTest {
     assertCollectionEqualsF(basal, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, eps = 1e-4)
     assertCollectionEqualsF(
         action,
-        40.55F, 36.93F, 33.43F, 30.25F, 28.83F, 31.72F, 39.79F, 51.50F, 64.30F,
+        2.52F, 2.43F, 2.33F, 2.23F, 2.13F, 2.03F, 1.93F, 1.83F, 1.73F,
         eps = 1e-2)
     verify(dp).getBoluses(
         Instant.parse("2013-12-13T15:30:00Z"),

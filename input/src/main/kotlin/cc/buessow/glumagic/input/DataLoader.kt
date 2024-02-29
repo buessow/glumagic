@@ -17,7 +17,7 @@ class DataLoader(
   private val inputUpTo = inputAt + config.predictionPeriod
   private val intervals = inputFrom ..< inputUpTo step config.freq
   private val carbAction = LogNormAction(config.carbAction)
-  private val insulinAction = LogNormAction(config.insulinAction)
+  private val insulinAction = ExponentialInsulinModel.fiasp
 
   companion object {
     @VisibleForTesting
@@ -314,7 +314,7 @@ class DataLoader(
   @Suppress("Unused")
   private suspend fun loadBasalActions(): List<Float> {
     return loadBasalRates().let { basals ->
-      insulinAction.valuesAt(basals, intervals).map(Double::toFloat)
+      insulinAction.valuesAt(basals, inputFrom - config.freq, intervals).map(Double::toFloat)
     }
   }
 
@@ -333,7 +333,7 @@ class DataLoader(
   @Suppress("Unused")
   private suspend fun loadBolusAction(): List<Float> {
     return inputProvider.getBoluses(inputFrom - LogNormAction.maxAge, inputUpTo).let { bs ->
-      insulinAction.valuesAt(bs, intervals).map(Double::toFloat)
+      insulinAction.valuesAt(bs, inputFrom - config.freq, intervals).map(Double::toFloat)
     }
   }
 
@@ -346,8 +346,8 @@ class DataLoader(
     val (bolus, basal) = awaitAll(
         async { inputProvider.getBoluses(inputFrom - LogNormAction.maxAge, inputUpTo) },
         async { loadBasalRates() })
-    val bolusAction = insulinAction.valuesAt(bolus, intervals).map(Double::toFloat)
-    val basalAction = insulinAction.valuesAt(basal, intervals).map(Double::toFloat)
+    val bolusAction = insulinAction.valuesAt(bolus, inputFrom - config.freq, intervals).map(Double::toFloat)
+    val basalAction = insulinAction.valuesAt(basal, inputFrom - config.freq, intervals).map(Double::toFloat)
 
     InsulinEvents(
         bolus =  alignEvents(bolus),

@@ -2,7 +2,8 @@ package cc.buessow.glumagic.input
 
 import java.time.Duration
 import java.time.Instant
-import kotlin.math.*
+import javax.swing.text.html.HTML.Tag.S
+import kotlin.math.exp
 
 /** Exponential insulin model for FIASP etc. taken from
  * https://seemycgm.com/2017/10/21/exponential-insulin-curves-fiasp/
@@ -31,14 +32,25 @@ class ExponentialInsulinModel(timeToPeak: Duration, private val totalDuration: D
   fun insulinAction(t: Duration) = insulinAction(toMinutes(t))
 
   private fun insulinOnBoard(t: Double) =
-      1 - S * (1 - a) * ((t * t) / (tau * td * (1 - a)) - t / tau - 1) * exp(-t / tau) + 1
+    when {
+      t < 0.0 -> 1.0
+      t > 360.0 -> 0.0
+      else -> 1 - S * (1 - a) * (((t * t) / (tau * td * (1 - a)) - t / tau - 1) * exp(-t / tau) + 1)
+    }
 
   @Suppress("Unused")
   fun insulinOnBoard(t: Duration) = insulinOnBoard(toMinutes(t))
 
-  fun valuesAt(values: List<DateValue>, times: Iterable<Instant>): List<Double> {
+  private fun insulinUsed(from: Duration, upto: Duration): Double =
+    insulinOnBoard(from) - insulinOnBoard(upto)
+
+  private fun insulinUsed(start: Instant, from: Instant, upto: Instant) =
+    insulinUsed(Duration.between(start, from), Duration.between(start, upto))
+
+  fun valuesAt(values: List<DateValue>, start: Instant, times: Iterable<Instant>): List<Double> {
     val results = mutableListOf<Double>()
 
+    var last = start
     var winStart = 0
     for (t in times) {
       // Move the first value in the time window we're interested in.
@@ -49,11 +61,10 @@ class ExponentialInsulinModel(timeToPeak: Duration, private val totalDuration: D
       var i = winStart
       while (i < values.size) {
         val (ti, vi) = values[i].let { it.timestamp to it.value }
-        val td = Duration.between(ti, t)
-        if (td <= Duration.ZERO) break
-        val ia = insulinAction(td)
+        val ia = insulinUsed(ti, last, t)
         total += vi * ia
         i++
+        last = t
       }
       results.add(total)
     }
