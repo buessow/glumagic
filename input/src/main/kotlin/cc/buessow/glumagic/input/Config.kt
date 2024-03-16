@@ -7,15 +7,15 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
-import kotlin.math.ln
 
-class Config(
+@Suppress("unused")
+data class Config(
     @SerializedName("trainingPeriodMinutes")
     val trainingPeriod: Duration,
     @SerializedName("predictionPeriodMinutes")
     val predictionPeriod: Duration = Duration.ZERO,
-    val carbAction: LogNorm,
-    val insulinAction: LogNorm,
+    val carbAction: ActionModel,
+    val insulinAction: ActionModel,
     @SerializedName("hrLongDurationMinutes")
     val hrLong: List<Duration>,
     val hrHighThreshold: Int,
@@ -24,19 +24,9 @@ class Config(
     val testData: List<TestData> = emptyList(),
     @SerializedName("zoneId")
     private val zone: ZoneId?,
+    val xValues: List<String> = emptyList(),
+    val yValues: List<String> = emptyList(),
 ) {
-
-  class LogNorm(
-      @SerializedName("mu") val explicitMu: Double? = null,
-      private val peakInMinutes: Int? = null,
-      val sigma: Double) {
-
-    init {
-      assert(explicitMu != null || peakInMinutes != null)
-      assert(explicitMu == null || peakInMinutes == null)
-    }
-    val mu: Double get() = explicitMu ?: (ln(peakInMinutes!! / 60.0) + (sigma * sigma))
-  }
 
   val zoneId: ZoneId get() = zone ?: ZoneOffset.UTC
 
@@ -44,14 +34,6 @@ class Config(
     fun fromJson(input: InputStream): Config = JsonParser.fromJson(input)
     fun fromJson(jsonFile: File): Config = JsonParser.fromJson(jsonFile)
   }
-  val inputSize
-    get() =
-      // hour of day and long heart rates
-      1 + hrLong.size +
-          // glucose slope and slope of slope
-          2 * ((trainingPeriod + predictionPeriod) / freq) +
-          // carb, insulin and heart rate
-          3 * ((trainingPeriod + predictionPeriod) / freq)
 
   val outputSize get() = predictionPeriod / freq  // glucose slope prediction
 

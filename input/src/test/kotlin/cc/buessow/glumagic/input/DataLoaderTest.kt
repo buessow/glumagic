@@ -2,9 +2,10 @@ package cc.buessow.glumagic.input
 
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
-import java.lang.Float.isNaN
+import java.lang.Double.isNaN
 import java.time.Duration
 import java.time.Duration.ofMinutes
 import java.time.Duration.ofSeconds
@@ -18,8 +19,8 @@ class DataLoaderTest {
       trainingPeriod = ofMinutes(30),
       predictionPeriod = ofMinutes(15),
       hrHighThreshold = 120,
-      carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-      insulinAction = Config.LogNorm(peakInMinutes = 60, sigma = 0.5),
+      carbAction = LogNormAction(timeToPeak = ofMinutes(45), sigma = 0.5),
+      insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
       hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
       zone = ZoneId.of("UTC"))
 
@@ -30,28 +31,28 @@ class DataLoaderTest {
   fun align_empty() {
     val values = emptyList<DateValue>()
     val aligned = DataLoader.align(from - ofMinutes(10), values, from, config.freq)
-    assertCollectionEqualsF(aligned.toList(), Float.NaN, Float.NaN, eps = 1e-2)
+    assertCollectionEqualsF(aligned.toList(), Double.NaN, Double.NaN, eps = 1e-2)
   }
 
   @Test
   fun align_oneBefore() {
     val values1 = listOf(DateValue(now + ofMinutes(-2), 8.0))
     val aligned1 = DataLoader.align(now, values1, now + ofMinutes(10), config.freq)
-    assertCollectionEqualsF(aligned1.toList(), 8F, 8F, eps = 1e-2)
+    assertCollectionEqualsF(aligned1.toList(), 8.0, 8.0, eps = 1e-2)
   }
 
   @Test
   fun align_oneWithin() {
     val values2 = listOf(DateValue(now + ofMinutes(2), 8.0))
     val aligned2 = DataLoader.align(now, values2, now + ofMinutes(10), config.freq)
-    assertCollectionEqualsF(aligned2.toList(), Float.NaN, 8F, eps = 1e-2)
+    assertCollectionEqualsF(aligned2.toList(), Double.NaN, 8.0, eps = 1e-2)
   }
 
   @Test
   fun align_oneAfter() {
     val values2 = listOf(DateValue(now + ofMinutes(12), 8.0))
     val aligned2 = DataLoader.align(now, values2, now + ofMinutes(10), config.freq)
-    assertCollectionEqualsF(aligned2.toList(), Float.NaN, Float.NaN, eps = 1e-2)
+    assertCollectionEqualsF(aligned2.toList(), Double.NaN, Double.NaN, eps = 1e-2)
   }
 
   @Test
@@ -61,7 +62,7 @@ class DataLoaderTest {
         DateValue(now + ofMinutes(4), 5.0)
     )
     val aligned = DataLoader.align(now, values, now + ofMinutes(10), config.freq)
-    assertCollectionEqualsF(aligned.toList(), 10F, 5F, eps = 1e-2)
+    assertCollectionEqualsF(aligned.toList(), 10.0, 5.0, eps = 1e-2)
   }
 
   @Test
@@ -73,7 +74,7 @@ class DataLoaderTest {
         DateValue(now + ofMinutes(9), 5.0)
     )
     val aligned = DataLoader.align(now, values, now + ofMinutes(15), config.freq)
-    assertCollectionEqualsF(aligned.toList(), 16F, 10F, 5F, eps = 1e-2)
+    assertCollectionEqualsF(aligned.toList(), 16.0, 10.0, 5.0, eps = 1e-2)
   }
 
   @Test
@@ -83,7 +84,7 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, now, config)
     val values = dataLoader.loadGlucoseReadings()
-    assertCollectionEqualsF(values, *FloatArray(6) { Float.NaN }, eps = 1e-2)
+    assertCollectionEqualsF(values, *DoubleArray(6) { Double.NaN }, eps = 1e-2)
     verify(dp).getGlucoseReadings(now - DataLoader.preFetch, now + config.trainingPeriod)
     Unit
   }
@@ -100,7 +101,7 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadGlucoseReadings()
-    assertCollectionEqualsF(values, Float.NaN, 80F, 120F, 120F, 120F, 120F, eps = 1e-2)
+    assertCollectionEqualsF(values, Double.NaN, 80.0, 120.0, 120.0, 120.0, 120.0, eps = 1e-2)
     verify(dp).getGlucoseReadings(
         Instant.parse("2013-12-13T19:24:00Z"),
         Instant.parse("2013-12-13T20:00:00Z"))
@@ -114,8 +115,9 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadHeartRates()
-    assertCollectionEqualsF(values, *FloatArray(6) { Float.NaN }, 60.0F, 60.0F, 60.0F, eps = 1e-2)
-    verify(dp).getHeartRates(Instant.parse("2013-12-13T19:24:00Z"))
+    assertCollectionEqualsF(values, *DoubleArray(6) { Double.NaN }, 60.0, 60.0, 60.0, eps = 1e-2)
+    verify(dp).getHeartRates(
+        Instant.parse("2013-12-13T19:24:00Z"),Instant.parse("2013-12-13T20:00:00Z"))
     Unit
   }
 
@@ -132,9 +134,10 @@ class DataLoaderTest {
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadHeartRates()
     assertCollectionEqualsF(
-        values, Float.NaN, 80F, 120F, 120F, 120F, 120F, 60F, 60.0F, 60.0F, eps = 1e-2
+        values, Double.NaN, 80.0, 120.0, 120.0, 120.0, 120.0, 60.0, 60.0, 60.0, eps = 1e-2
     )
-    verify(dp).getHeartRates(Instant.parse("2013-12-13T19:24:00Z"))
+    verify(dp).getHeartRates(
+        Instant.parse("2013-12-13T19:24:00Z"), Instant.parse("2013-12-13T20:00:00Z"))
     Unit
   }
 
@@ -156,12 +159,12 @@ class DataLoaderTest {
     assertEquals(3, values.size)
     assertCollectionEqualsF(
         values[0],
-        80F, 80F, 121F, 121F, 121F, 121.00F, 121.00F, 121.00F, 121.00F,
+        80.0, 80.0, 121.0, 121.0, 121.0, 121.0, 121.0, 121.0, 121.0,
         eps = 1e-2)
     assertCollectionEqualsF(
-        values[1], 0F, 0F, 1F, 1F, 1F, 1F, 1F, 1F, 1F, eps = 1e-2)
+        values[1], 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, eps = 1e-2)
     assertCollectionEqualsF(
-        values[2], 2F, 2F, 3F, 2F, 1F, 1F, 1F, 1F, 1F, eps = 1e-2)
+        values[2], 2.0, 2.0, 3.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, eps = 1e-2)
     verify(dp).getHeartRates(
         Instant.parse("2013-12-13T17:30:00Z"),
         Instant.parse("2013-12-13T20:15:00Z"))
@@ -176,8 +179,8 @@ class DataLoaderTest {
     val c = Config(
         trainingPeriod = Duration.between(from, upto),
         predictionPeriod = Duration.ZERO,
-        carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-        insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
+        carbAction = LogNormAction(timeToPeak = ofMinutes(45), sigma = 0.5),
+        insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
         hrHighThreshold = 99,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
         zone = ZoneId.of("UTC"))
@@ -193,8 +196,8 @@ class DataLoaderTest {
     assertEquals(count, values[0].size)
     assertEquals(count, values[1].size)
     assertEquals(count, values[2].size)
-    assertCollectionEqualsF(values[1], *FloatArray(count) { 12F }, eps = 1e-2)
-    assertCollectionEqualsF(values[2], *FloatArray(count) { 24F }, eps = 1e-2)
+    assertCollectionEqualsF(values[1], *DoubleArray(count) { 12.0 }, eps = 1e-2)
+    assertCollectionEqualsF(values[2], *DoubleArray(count) { 24.0 }, eps = 1e-2)
     verify(dp).getHeartRates(dataFrom, upto)
     Unit
   }
@@ -207,8 +210,8 @@ class DataLoaderTest {
     val c = Config(
         trainingPeriod = Duration.between(from, upto),
         predictionPeriod = Duration.ZERO,
-        carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-        insulinAction = Config.LogNorm(peakInMinutes = 60, sigma = 0.5),
+        carbAction = LogNormAction(timeToPeak = ofMinutes(45), sigma = 0.5),
+        insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
         hrHighThreshold = 99,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
         zone = ZoneId.of("UTC"))
@@ -230,8 +233,8 @@ class DataLoaderTest {
     assertEquals(count, values[0].size)
     assertEquals(count, values[1].size)
     assertEquals(count, values[2].size)
-    assertCollectionEqualsF(values[1], *FloatArray(count) { _ -> 8F }, eps = 0.1)
-    assertCollectionEqualsF(values[2], *FloatArray(count) { 16F }, eps = 0.1)
+    assertCollectionEqualsF(values[1], *DoubleArray(count) { _ -> 8.0 }, eps = 0.1)
+    assertCollectionEqualsF(values[2], *DoubleArray(count) { 16.0 }, eps = 0.1)
     verify(dp).getHeartRates(dataFrom, upto)
     Unit
   }
@@ -244,7 +247,7 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadLongHeartRates()
-    assertCollectionEqualsF(values, 4F, 5F, eps = 1e-2)
+    assertCollectionEqualsF(values, 4.0, 5.0, eps = 1e-2)
     verify(dp).getLongHeartRates(
         Instant.parse("2013-12-13T20:00:00Z"), 120, config.hrLong)
     Unit
@@ -257,8 +260,8 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val (carbs, carbAction) = dataLoader.loadCarbEventsAndAction()
-    assertCollectionEqualsF(carbs, *FloatArray(9) { 0F }, eps = 1e-2)
-    assertCollectionEqualsF(carbAction, *FloatArray(9) { 0F }, eps = 1e-2)
+    assertCollectionEqualsF(carbs, *DoubleArray(9) { 0.0 }, eps = 1e-2)
+    assertCollectionEqualsF(carbAction, *DoubleArray(9) { 0.0 }, eps = 1e-2)
     verify(dp).getCarbs(
         Instant.parse("2013-12-13T15:30:00Z"),
         Instant.parse("2013-12-13T20:15:00Z"))
@@ -279,10 +282,10 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val (carbs, carbAction) = dataLoader.loadCarbEventsAndAction()
-    assertCollectionEqualsF(carbs, 0F, 120F, 50F, 0F, 0F, 0F, 0F, 0F, 0F, eps = 1e-4)
+    assertCollectionEqualsF(carbs, 0.0, 120.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, eps = 1e-4)
     assertCollectionEqualsF(
         carbAction,
-        28.73F, 24.59F, 20.99F, 18.50F, 22.75F, 40.90F, 71.58F, 105.85F, 134.91F,
+        28.73, 24.59, 20.99, 18.50, 22.75, 40.90, 71.58, 105.85, 134.91,
         eps = 1e-2)
     verify(dp).getCarbs(
         Instant.parse("2013-12-13T15:30:00Z"),
@@ -302,11 +305,11 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val (bolus, basal, action) = dataLoader.loadInsulinEventsAndAction()
-    assertCollectionEqualsF(bolus, 0F, 120F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, eps = 1e-4)
-    assertCollectionEqualsF(basal, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, eps = 1e-4)
+    assertCollectionEqualsF(bolus, 0.0, 120.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, eps = 1e-4)
+    assertCollectionEqualsF(basal, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, eps = 1e-4)
     assertCollectionEqualsF(
         action,
-        2.52F, 2.43F, 2.33F, 2.23F, 2.13F, 2.03F, 1.93F, 1.83F, 1.73F,
+        2.52, 2.43, 2.83, 3.61, 4.23, 4.72, 5.09, 5.37, 5.55,
         eps = 1e-2)
     verify(dp).getBoluses(
         Instant.parse("2013-12-13T15:30:00Z"),
@@ -523,14 +526,14 @@ class DataLoaderTest {
     val config = Config(
         trainingPeriod = ofMinutes(30),
         predictionPeriod = Duration.ZERO,
-        carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-        insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
+        carbAction = LogNormAction(timeToPeak = ofMinutes(45), sigma = 0.5),
+        insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
         hrHighThreshold = 120,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
         zone = ZoneId.of("CET"))
     config.trainingPeriod / config.freq
 
-    val input: InputProvider = mock() {
+    val input: InputProvider = mock {
       onBlocking { getGlucoseReadings(any(), anyOrNull()) }.thenReturn(emptyList())
       onBlocking { getHeartRates(any(), anyOrNull()) }.thenReturn(emptyList())
       onBlocking { getCarbs(any(), anyOrNull()) }.thenReturn(emptyList())
@@ -542,17 +545,17 @@ class DataLoaderTest {
     val expected = TrainingInput(
         date = (at ..< (at + config.trainingPeriod) step config.freq).toList(),
         hour = List(6) { 1 },
-        glucose = List(6) { Float.NaN },
-        glucoseSlope1 = List(6) { Float.NaN },
-        glucoseSlope2 = List(6) { Float.NaN },
-        heartRate = List(6) { Float.NaN },
-        hrLong1 = List(6) { 0F },
-        hrLong2 = List(6) { 0F },
-        carbs = List(6) { 0F },
-        carbAction = List(6) { 0F },
-        bolus = List(6) { 0F },
-        basal = List(6) { 0F },
-        insulinAction = List(6) { 0F })
+        glucose = List(6) { Double.NaN },
+        glucoseSlope1 = List(6) { Double.NaN },
+        glucoseSlope2 = List(6) { Double.NaN },
+        heartRate = List(6) { Double.NaN },
+        hrLong1 = List(6) { 0.0 },
+        hrLong2 = List(6) { 0.0 },
+        carbs = List(6) { 0.0 },
+        carbAction = List(6) { 0.0 },
+        bolus = List(6) { 0.0 },
+        basal = List(6) { 0.0 },
+        insulinAction = List(6) { 0.0 })
     assertEquals(expected, DataLoader.getTrainingData(input, at, config))
   }
 
@@ -562,14 +565,14 @@ class DataLoaderTest {
     val config = Config(
         trainingPeriod = ofMinutes(30),
         predictionPeriod = Duration.ZERO,
-        carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-        insulinAction = Config.LogNorm(peakInMinutes = 60, sigma = 0.5),
+        carbAction = LogNormAction(timeToPeak = ofMinutes(45), sigma = 0.5),
+        insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
         hrHighThreshold = 120,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
         zone = ZoneId.of("CET"))
     val dates = (at..<(at + config.trainingPeriod) step config.freq).toList()
 
-    val input: InputProvider = mock() {
+    val input: InputProvider = mock {
       onBlocking { getGlucoseReadings(any(), anyOrNull()) }.thenReturn(
           dates.mapIndexed { i, d -> DateValue(d, 100.0 + i) })
       onBlocking { getHeartRates(any(), anyOrNull()) }.thenReturn(
@@ -587,17 +590,18 @@ class DataLoaderTest {
     val expected = TrainingInput(
         date = dates,
         hour = List(6) { 1 },
-        glucose = dates.indices.map { i -> 100F + i },
-        glucoseSlope1 = listOf(0F, 0.2F, 0.2F, 0.2F, 0.2F, 0F),
-        glucoseSlope2 = listOf(0F, 0.02F, 0F, 0F, -0.02F, 0F),
-        heartRate = dates.indices.map { i -> 134F + i },
-        hrLong1 = List(6) { 12F },
-        hrLong2 = List(6) { i -> 14F + i },
-        carbs = listOf(0F, 10F, 0F, 0F, 0F, 0F),
-        carbAction = listOf(0F, 0F, 6.0148083E-4F, 0.10177184F, 0.8399423F, 2.5200033F),
-        bolus = List(6) { 0F },
-        basal = List(6) { 0F },
-        insulinAction = List(6) { 0F })
+        glucose = dates.indices.map { i -> 100.0 + i },
+        glucoseSlope1 = listOf(0.0, 0.2, 0.2, 0.2, 0.2, 0.2),
+        glucoseSlope2 = listOf(0.0, 0.04, 0.0, 0.0, 0.0, 0.0),
+        heartRate = dates.indices.map { i -> 134.0 + i },
+        hrLong1 = List(6) { 12.0 },
+        hrLong2 = List(6) { i -> 14.0 + i },
+        carbs = listOf(0.0, 10.0, 0.0, 0.0, 0.0, 0.0),
+        carbAction = listOf(
+            0.0, 0.0, 6.014808418383709E-4, 0.10177184160514258, 0.8399422757728754, 2.520003225935824),
+        bolus = List(6) { 0.0 },
+        basal = List(6) { 0.0 },
+        insulinAction = List(6) { 0.0 })
     assertEquals(expected, td)
 
     val qat = at - DataLoader.preFetch
@@ -610,10 +614,63 @@ class DataLoaderTest {
       getBoluses(at - LogNormAction.maxAge, at + config.trainingPeriod) }
   }
 
+  @Test
+  fun getInputVector() {
+    val at = Instant.parse("2013-12-13T00:00:00Z")
+    val dates = (at..<(at + config.trainingPeriod) step config.freq).toList()
+
+    val input: InputProvider = mock {
+      onBlocking { getGlucoseReadings(any(), anyOrNull()) }.thenReturn(
+          dates.mapIndexed { i, d -> DateValue(d, 100.0 + i) })
+      onBlocking { getHeartRates(any(), anyOrNull()) }.thenReturn(
+          (at - Duration.ofHours(2) ..< at + config.trainingPeriod step config.freq)
+              .asIterable()
+              .mapIndexed { i, d -> DateValue(d, 110.0 + i) })
+      onBlocking { getLongHeartRates(any(), any(), any()) }.thenReturn(listOf(2, 3))
+      onBlocking { getCarbs(any(), anyOrNull()) }.thenReturn(listOf(
+          DateValue(Instant.parse("2013-12-13T00:05:00Z"), 10.0)))
+      onBlocking { getBoluses(any(), anyOrNull()) }.thenReturn(listOf(
+          DateValue(Instant.parse("2013-12-13T00:20:00Z"), 12.0)))
+      onBlocking { getTemporaryBasalRates(any(), anyOrNull()) }.thenReturn(emptyList())
+      onBlocking { getBasalProfileSwitches(any(), anyOrNull()) }.thenReturn(null)
+    }
+
+    val c1 = config.copy(predictionPeriod = Duration.ZERO, xValues = listOf( "gl_00", "gl_05"))
+    val (last1, v1) = DataLoader.getInputVector(input, at, c1)
+    assertEquals(105.0, last1)
+    assertNull(ArrayApproxCompare.getMismatch(v1.toList(), listOf(100F, 101F), eps = 1e-4))
+
+    val c2 = config.copy(
+        predictionPeriod = Duration.ZERO,
+        xValues = listOf(
+            "gl_00", "gls_05", "gls2_10",
+            "hr_15", "hr_long_15", "hr_lon2_15",
+            "ins_20", "ins_25", "ia_25",
+            "0", "3.14",
+            "carbs_05", "ca_20"))
+    val (last2, v2) = DataLoader.getInputVector(input, at, c2)
+    assertEquals(105.0, last2)
+    assertNull(ArrayApproxCompare.getMismatch(
+        listOf(100F, 0.2F, 0.0F, 137.0F, 2.0F, 3.0F, 12.0F, 0.0F, 0.050F, 0.0F, 3.14F, 10.0F, 0.84F),
+        v2.toList(), eps = 1e-3))
+
+    val qat = at - DataLoader.preFetch
+    verifyBlocking(input, atLeastOnce()) { getGlucoseReadings(qat, at + config.trainingPeriod) }
+    verifyBlocking(input, atLeastOnce()) { getHeartRates(qat, at + config.trainingPeriod) }
+    verifyBlocking(input, atLeastOnce()) {
+      getLongHeartRates(at + config.trainingPeriod, config.hrHighThreshold, config.hrLong) }
+    verifyBlocking(input, atLeastOnce()) { getBasalProfileSwitches(at, at + config.trainingPeriod) }
+    verifyBlocking(input, atLeastOnce()) { getTemporaryBasalRates(at, at + config.trainingPeriod) }
+    verifyBlocking(input, atLeastOnce()) {
+      getCarbs(at - LogNormAction.maxAge, at + config.trainingPeriod) }
+    verifyBlocking(input, atLeastOnce()) {
+      getBoluses(at - LogNormAction.maxAge, at + config.trainingPeriod) }
+    verifyNoMoreInteractions(input)
+  }
 
   companion object {
 
-    private fun eqApprox(a: Float, b: Float, eps: Double) =
+    private fun eqApprox(a: Double, b: Double, eps: Double) =
       isNaN(a) && isNaN(b) || abs(a - b) < eps
 
     private fun eqApprox(a: DateValue, b: DateValue) =
@@ -653,12 +710,12 @@ class DataLoaderTest {
     fun assertCollectionEquals(actual: Collection<DateValue>, vararg expected: DateValue) =
       assertCollectionEquals(actual, *expected, eq = ::eqApprox)
 
-    fun assertCollectionEqualsF(actual: Collection<Float>, vararg expected: Float, eps: Double) {
+    fun assertCollectionEqualsF(actual: Collection<Double>, vararg expected: Double, eps: Double) {
       assertCollectionEquals(
           actual,
           *expected.toTypedArray(),
-          toString = { f: Float -> "%.2f".format(f) + "F" }
-      ) { a: Float, b: Float -> eqApprox(a, b, eps) }
+          toString = { f: Double -> "%.2f".format(f) }
+      ) { a: Double, b: Double -> eqApprox(a, b, eps) }
     }
   }
 }

@@ -7,7 +7,7 @@ internal fun <T> Iterator<T>.nextOrNull() = if (hasNext()) next() else null
 
 internal operator fun Duration.div(d: Duration) = (seconds / d.seconds).toInt()
 
-internal class TimeInstantProgression(
+class TimeInstantProgression(
     override val start: Instant,
     override val endExclusive: Instant,
     private val step: Duration
@@ -23,5 +23,5 @@ internal class TimeInstantProgression(
     TimeInstantProgression(start, endExclusive, step)
 }
 
-internal operator fun Instant.rangeUntil(other: Instant) =
+operator fun Instant.rangeUntil(other: Instant) =
   TimeInstantProgression(this, other, Duration.ofMinutes(1))

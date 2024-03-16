@@ -5,21 +5,21 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.math.*
 
-internal class LogNormAction(private var mu: Double, private val sigma: Double = 1.0) {
+class LogNormAction(var mu: Double, val sigma: Double = 1.0): ActionModel {
 
   companion object {
     @VisibleForTesting
     internal val maxAge: Duration = Duration.ofHours(4)
   }
 
-  constructor(config: Config.LogNorm) : this(config.mu, config.sigma)
-
   constructor(timeToPeak: Duration, sigma: Double = 1.0) : this(
       mu = ln(timeToPeak.toMillis() / 3600_000.0) + sigma * sigma,
       sigma = sigma
   )
 
-  fun valuesAt(values: List<DateValue>, times: Iterable<Instant>): List<Double> {
+  override fun getArgs() = mapOf("name" to "LogNorm", "mu" to mu, "sigma" to sigma)
+
+  override fun valuesAt(values: List<DateValue>, start: Instant, times: Iterable<Instant>): List<Double> {
     val results = mutableListOf<Double>()
 
     var winStart = 0

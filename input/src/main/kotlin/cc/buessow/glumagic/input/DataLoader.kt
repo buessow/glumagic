@@ -16,17 +16,35 @@ class DataLoader(
   private val inputAt = inputFrom + config.trainingPeriod
   private val inputUpTo = inputAt + config.predictionPeriod
   private val intervals = inputFrom ..< inputUpTo step config.freq
-  private val carbAction = LogNormAction(config.carbAction)
+  private val carbAction = config.carbAction
   private val insulinAction = ExponentialInsulinModel.fiasp
 
   companion object {
+
+    class PatternMatcher<T>(val value: String) {
+      var result: T? = null
+      fun match(pattern: String, b: MatchResult.() -> T) {
+        result = result ?: Regex(pattern).matchEntire(value)?.let { b(it) }
+      }
+
+      @Suppress("UNUSED")
+      fun default(b: ()-> T) {
+        if (result == null) b()
+      }
+    }
+    fun <T> whenMatch(value: String, b: PatternMatcher<T>.()->Unit): T? {
+      val pm = PatternMatcher<T>(value)
+      b(pm)
+      return pm.result
+    }
+
     @VisibleForTesting
     internal val preFetch = Duration.ofMinutes(6)
 
     private fun assertZero(value: Int, text: String) {
       assert(value == 0) { "expect no $text, got $value" }
     }
-    private fun assertWithin(name: String, values: List<Float>, min: Float, max: Float) {
+    private fun assertWithin(name: String, values: List<Double>, min: Double, max: Double) {
       assertZero(values.count { !it.isNaN() && it < min}, "$name < $min")
       assertZero(values.count { !it.isNaN() && it > max}, "$name > $max")
     }
@@ -35,7 +53,7 @@ class DataLoader(
       DataLoader(input, time, config).getInputVector()
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    // @OptIn(ExperimentalCoroutinesApi::class)
     fun getTrainingData(input: InputProvider, time:Instant, config: Config) = runBlocking {
       val dl = DataLoader(input, time, config)
       val deferredGlucose = async { dl.loadGlucoseReadings() }
@@ -43,10 +61,10 @@ class DataLoader(
       val deferredCarbAction = async { dl.loadCarbEventsAndAction() }
       val deferredInsulin = async { dl.loadInsulinEventsAndAction() }
 
-      assertWithin("glucose", deferredGlucose.await(), 20F, 500F)
-      assertWithin("hear rate", deferredHeartRate.await()[0], 20F, 300F)
-      assertWithin("long heart rate 1", deferredHeartRate.await()[1], 0F, 10000F)
-      assertWithin("long heart rate 2", deferredHeartRate.await()[2], 0F, 10000F)
+      assertWithin("glucose", deferredGlucose.await(), 20.0, 500.0)
+      assertWithin("hear rate", deferredHeartRate.await()[0], 20.0, 300.0)
+      assertWithin("long heart rate 1", deferredHeartRate.await()[1], 0.0, 10000.0)
+      assertWithin("long heart rate 2", deferredHeartRate.await()[2], 0.0, 10000.0)
 
       val gl = deferredGlucose.await()
       val hours = dl.intervals.map { ts -> OffsetDateTime.ofInstant(ts, config.zoneId).hour }
@@ -56,11 +74,17 @@ class DataLoader(
       val (carbs, carbAction) = deferredCarbAction.await()
       val insulin = deferredInsulin.await()
 
-      assertWithin("carbs", carbs, 0F, 200F)
-      assertWithin("carb action", carbAction, 0F, 200F)
-      assertWithin("insulin bolus", insulin.bolus, 0F, 100F)
-      assertWithin("insulin basal", insulin.basal, 0F, 100F)
-      assertWithin("insulin action", insulin.action, 0F, 100F)
+      assertWithin("carbs", carbs, 0.0, 200.0)
+      assertWithin("carb action", carbAction, 0.0, 300.0)
+      assertWithin("insulin bolus", insulin.bolus, 0.0, 100.0)
+      assertWithin("insulin basal", insulin.basal, 0.0, 100.0)
+      assertWithin("insulin action", insulin.action, 0.0, 100.0)
+
+      val totalInsulin = insulin.bolus.sum() + insulin.basal.sum()
+      val totalIAction = insulin.action.sum()
+      assert (totalIAction in 0.99 * totalInsulin..1.01 * totalInsulin) {
+        "total insulin $totalInsulin, total action $totalIAction"
+      }
 
       TrainingInput(date = dl.intervals.toList(),
                     hour = hours,
@@ -115,7 +139,7 @@ class DataLoader(
           if (temp.end >= nextStart) break
 
           // We need to revert to normal basal until end of basal or next
-          // temporary basal unless their is no gap between this and next
+          // temporary basal unless there is no gap between this and next
           // temporary basal.
           val tempEnd = temp.end
           temp = itTemp.nextOrNull()
@@ -145,20 +169,20 @@ class DataLoader(
         }
         while (t < curr.timestamp && t < to) {
           if (last == null) {
-            yield(Float.NaN)
+            yield(Double.NaN)
           } else {
             val d1 = Duration.between(last.timestamp, t).seconds
             val d2 = Duration.between(t, curr.timestamp).seconds
             if (d1 > fillIn.seconds && d2 > fillIn.seconds) {
-              yield(Float.NaN)
+              yield(Double.NaN)
             } else if (d1 > fillIn.seconds) {
-              yield(curr.value.toFloat())
+              yield(curr.value)
             } else if (d2 > fillIn.seconds) {
-              yield(last.value.toFloat())
+              yield(last.value)
             } else {
               // We weigh the value that is close to t higher.
               val avg = (curr.value * d1 + last.value * d2) / (d1 + d2)
-              yield(avg.toFloat())
+              yield(avg)
             }
           }
 
@@ -170,9 +194,9 @@ class DataLoader(
       // Output the last value if we are missing values at the end.
       while (t < to) {
         if (last == null|| Duration.between(last.timestamp, t) > fillIn.multipliedBy(2)) {
-          yield(Float.NaN)
+          yield(Double.NaN)
         } else {
-          yield(last.value.toFloat())
+          yield(last.value)
         }
         t += interval
       }
@@ -192,20 +216,20 @@ class DataLoader(
         carbs += event.value
         event = iter.nextOrNull()
       }
-      yield(carbs.toFloat())
+      yield(carbs)
     }
   }.toList()
 
-  suspend fun loadGlucoseReadings(): List<Float> {
+  suspend fun loadGlucoseReadings(): List<Double> {
     val loadFrom: Instant = inputFrom - preFetch
     val glucoseReadings = inputProvider.getGlucoseReadings(loadFrom, inputAt)
     return align(inputFrom, glucoseReadings, inputAt, config.freq).toList()
   }
 
-  suspend fun loadHeartRates(): List<Float> {
+  suspend fun loadHeartRates(): List<Double> {
     val loadFrom: Instant = inputFrom - preFetch
-    return inputProvider.getHeartRates(loadFrom).let { hrs ->
-      val futureHeartRates = FloatArray(config.predictionPeriod / config.freq) { 60F }
+    return inputProvider.getHeartRates(loadFrom, inputAt).let { hrs ->
+      val futureHeartRates = DoubleArray(config.predictionPeriod / config.freq) { 60.0 }
       listOf(
           align(inputFrom, hrs, inputAt, config.freq).toList(),
           futureHeartRates.toList()
@@ -231,12 +255,12 @@ class DataLoader(
     return values.subList(start, end)
   }
 
-  suspend fun loadHeartRatesWithLong(): List<List<Float>> {
+  suspend fun loadHeartRatesWithLong(): List<List<Double>> {
     val maxPeriod = config.hrLong.maxOrNull() ?: Duration.ZERO
     val hrs = inputProvider.getHeartRates(inputFrom - maxPeriod, inputUpTo)
     val result = mutableListOf(align(inputFrom, hrs, inputUpTo, config.freq).toList())
     for (th in config.hrLong) {
-      val hrLong = mutableListOf<Float>()
+      val hrLong = mutableListOf<Double>()
 
       // highCount is the number of high heart rates in the window periodStartIdx ..< periodEndIdx
       // We first move periodEndIdx to the current ts and increase highCount by all high values
@@ -255,7 +279,7 @@ class DataLoader(
         highMillis -= millisTrue(
             p, hrs.elementAtOrNull(periodStartIdx)?.timestamp ?: inputUpTo, ::highHeartRate)
 
-        hrLong.add(round(highMillis.toDouble() / config.freq.toMillis()).toFloat())
+        hrLong.add(round(highMillis.toDouble() / config.freq.toMillis()))
       }
       result.add(hrLong)
     }
@@ -312,42 +336,42 @@ class DataLoader(
   }
 
   @Suppress("Unused")
-  private suspend fun loadBasalActions(): List<Float> {
+  private suspend fun loadBasalActions(): List<Double> {
     return loadBasalRates().let { basals ->
-      insulinAction.valuesAt(basals, inputFrom - config.freq, intervals).map(Double::toFloat)
+      insulinAction.valuesAt(basals, inputFrom - config.freq, intervals)
     }
   }
 
-  suspend fun loadLongHeartRates(): List<Float> {
+  suspend fun loadLongHeartRates(): List<Double> {
     return inputProvider
         .getLongHeartRates(inputAt, config.hrHighThreshold, config.hrLong)
-        .map(Int::toFloat).toList()
+        .map(Int::toDouble).toList()
   }
 
-  suspend fun loadCarbEventsAndAction(): Pair<List<Float>, List<Float>> {
+  suspend fun loadCarbEventsAndAction(): Pair<List<Double>, List<Double>> {
     val carbs = inputProvider.getCarbs(inputFrom - LogNormAction.maxAge, inputUpTo)
     return Pair(
-        alignEvents(carbs), carbAction.valuesAt(carbs, intervals).map(Double::toFloat))
+        alignEvents(carbs), carbAction.valuesAt(carbs, inputFrom - config.freq, intervals))
   }
 
   @Suppress("Unused")
-  private suspend fun loadBolusAction(): List<Float> {
+  private suspend fun loadBolusAction(): List<Double> {
     return inputProvider.getBoluses(inputFrom - LogNormAction.maxAge, inputUpTo).let { bs ->
-      insulinAction.valuesAt(bs, inputFrom - config.freq, intervals).map(Double::toFloat)
+      insulinAction.valuesAt(bs, inputFrom - config.freq, intervals)
     }
   }
 
   data class InsulinEvents(
-      val bolus: List<Float>,
-      val basal: List<Float>,
-      val action: List<Float>)
+      val bolus: List<Double>,
+      val basal: List<Double>,
+      val action: List<Double>)
 
   suspend fun loadInsulinEventsAndAction(): InsulinEvents = coroutineScope {
     val (bolus, basal) = awaitAll(
         async { inputProvider.getBoluses(inputFrom - LogNormAction.maxAge, inputUpTo) },
         async { loadBasalRates() })
-    val bolusAction = insulinAction.valuesAt(bolus, inputFrom - config.freq, intervals).map(Double::toFloat)
-    val basalAction = insulinAction.valuesAt(basal, inputFrom - config.freq, intervals).map(Double::toFloat)
+    val bolusAction = insulinAction.valuesAt(bolus, inputFrom - config.freq, intervals)
+    val basalAction = insulinAction.valuesAt(basal, inputFrom - config.freq, intervals)
 
     InsulinEvents(
         bolus =  alignEvents(bolus),
@@ -355,51 +379,64 @@ class DataLoader(
         action = bolusAction.zip(basalAction).map { (bo, ba) -> bo + ba }.toList())
   }
 
-  private fun slope(values: List<Float>): List<Float> {
-    val minutes = 2F * config.freq.toMinutes()
+  private fun slope(values: List<Double>): List<Double> {
+    val minutes = config.freq.toMinutes()
     return List(values.size) { i ->
       when (i) {
-        0 -> if (values[0].isFinite()) 0F else Float.NaN
-        values.size - 1 -> if (values.last().isFinite()) 0F else Float.NaN
-        else -> (values[i + 1] - values[i - 1]) / minutes
+        0 -> if (values[0].isFinite()) 0.0 else Double.NaN
+        else -> (values[i] - values[i - 1]) / minutes
       }
     }
   }
 
-  private suspend fun getInputVector(): Pair<Float, FloatArray> {
-    val (gl, hrl, hr, ca, ia) = coroutineScope {
-      awaitAll(
+  private data class DeferredResult<T1, T2, T3, T4, T5>(
+      val value1: T1, val value2: T2, val value3: T3, val value4: T4, val value5: T5)
+
+  private suspend fun <T1, T2, T3, T4, T5> await5(
+      t1: Deferred<T1>, t2: Deferred<T2>, t3: Deferred<T3>, t4: Deferred<T4>, t5: Deferred<T5>) =
+    DeferredResult(t1.await(), t2.await(), t3.await(), t4.await(), t5.await())
+
+  private suspend fun getInputVector(): Pair<Double, FloatArray> {
+    val (gl, hrl, hr, carbs, insulin) = coroutineScope {
+      await5(
           async { loadGlucoseReadings() },
           async { loadLongHeartRates() },
           async { loadHeartRates() },
-          async { loadCarbEventsAndAction().second },
-          async { loadInsulinEventsAndAction().action },
-      )
+          async { loadCarbEventsAndAction() },
+          async { loadInsulinEventsAndAction() })
     }
-    assertWithin("glucose", gl, 20F, 500F)
-    assertWithin("long heart rate", hrl, 0F, 10000F)
-    assertWithin("hear rate", hr, 20F, 300F)
-    assertWithin("carb action", ca, 0F, 100F)
-    assertWithin("insulin action", ia, 0F, 100F)
+    assertWithin("glucose", gl, 20.0, 500.0)
+    assertWithin("long heart rate", hrl, 0.0, 10000.0)
+    assertWithin("hear rate", hr, 20.0, 300.0)
+    assertWithin("carb action", carbs.second, 0.0, 100.0)
+    assertWithin("insulin action", insulin.action, 0.0, 100.0)
 
-    val localTime = OffsetDateTime.ofInstant(inputAt, config.zoneId)
     val glSlope = slope(listOf(gl, listOf(gl.last())).flatten())
     val glSlop2 = slope(glSlope)
 
-    val input = mutableListOf<Float>()
-    input.add(localTime.hour.toFloat())
-    input.addAll(glSlope.dropLast(1))
-    input.addAll(Array(config.predictionPeriod / config.freq) { 0F })
-    input.addAll(glSlop2.dropLast(1))
-    input.addAll(Array(config.predictionPeriod / config.freq) { 0F })
-    input.addAll(ia)
-    input.addAll(ca)
-    input.addAll(hr)
-    input.addAll(hrl)
-
-    assert(input.size == config.inputSize) {
-      "Input size is ${input.size} instead of ${config.inputSize}"
+    val localTime = OffsetDateTime.ofInstant(inputFrom, config.zoneId)
+    val input = mutableListOf<Double>()
+    val getIndex = { minute: String -> minute.toInt() / config.freq.toMinutes().toInt() }
+    for (n in config.xValues) {
+      input.add(whenMatch(n) {
+          match("""\d+(.\d*)?""") { n.toDouble() }
+          match("""hour_(\d+)""") {
+              localTime.plusMinutes(groupValues[1].toLong()).hour.toDouble() }
+          match("""gl_(\d+)""") { gl[getIndex(groupValues[1])] }
+          match("""gls_(\d+)""") { glSlope[getIndex(groupValues[1])] }
+          match("""gls2_(\d+)""") { glSlop2[getIndex(groupValues[1])] }
+          match("""ins_(\d+)""") {
+              getIndex(groupValues[1]).let { i -> insulin.basal[i] + insulin.bolus[i] }}
+          match("""ia_(\d+)""") { insulin.action[getIndex(groupValues[1])] }
+          match("""carbs_(\d+)""") { carbs.first[getIndex(groupValues[1])] }
+          match("""ca_(\d+)""") { carbs.second[getIndex(groupValues[1])] }
+          match("""hr_(\d+)""") { hr[getIndex(groupValues[1])] }
+          match("""hr_long_(\d+)""") { hrl[0] }
+          match("""hr_lon2_(\d+)""") { hrl[1] }
+        }
+        ?: throw IllegalArgumentException("unsupported column '$n'"))
     }
-    return gl.last() to input.toFloatArray()
+
+    return gl.last() to input.map(Double::toFloat).toFloatArray()
   }
 }

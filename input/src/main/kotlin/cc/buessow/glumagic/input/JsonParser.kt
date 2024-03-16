@@ -4,12 +4,14 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import java.io.*
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.zip.GZIPOutputStream
 
+@Suppress("SameParameterValue")
 internal object JsonParser {
 
   private val gson: Gson
@@ -98,6 +100,44 @@ internal object JsonParser {
 
           override fun read(jr: JsonReader) =
             Duration.ofMinutes(jr.nextLong())
+        })
+    builder.registerTypeAdapter(
+        ActionModel::class.java,
+        object: TypeAdapter<ActionModel>() {
+          override fun write(out: JsonWriter, value: ActionModel?) {
+            if (value == null) {
+              out.nullValue()
+            } else {
+              out.beginObject()
+              for ((n, v) in value.getArgs()) {
+                out.name(n)
+                when (v) {
+                  is String -> out.value(v)
+                  is Number -> out.value(v)
+                  is Boolean -> out.value(v)
+                  else -> throw IllegalArgumentException("unsupported type ${v.javaClass}")
+                }
+              }
+              out.endObject()
+            }
+          }
+
+          override fun read(jr: JsonReader): ActionModel {
+            jr.beginObject()
+            val args = mutableMapOf<String, Any>()
+            while (jr.peek() != JsonToken.END_OBJECT) {
+              val name = jr.nextName()
+              when (jr.peek()) {
+                JsonToken.STRING -> args[name] = jr.nextString()
+                JsonToken.NUMBER -> args[name] = jr.nextDouble()
+                JsonToken.BOOLEAN -> args[name] = jr.nextBoolean()
+                JsonToken.NULL -> {}
+                else -> throw IllegalArgumentException("unknown token ${jr.peek()}")
+              }
+            }
+            jr.endObject()
+            return ActionModel.create(args)
+          }
         })
     gson = builder.create()
   }

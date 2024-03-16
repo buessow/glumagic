@@ -30,7 +30,7 @@ class TrainingInputTest {
       TrainingInput(
           emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
           emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
-          listOf(1F))
+          listOf(1.0))
       fail()
     } catch (e: AssertionError) {
       assertEquals("size mismatch for insulinAction: 0 != 1", e.message)
@@ -65,17 +65,17 @@ class TrainingInputTest {
     val ti = TrainingInput(
         listOf(Instant.parse("2023-01-10T10:11:12Z")),
         listOf(10),
-        listOf(2F),
-        listOf(3F),
-        listOf(4F),
-        listOf(5F),
-        listOf(6F),
-        listOf(7F),
-        listOf(8F),
-        listOf(9F),
-        listOf(10F),
-        listOf(11F),
-        listOf(12F))
+        listOf(2.0),
+        listOf(3.0),
+        listOf(4.0),
+        listOf(5.0),
+        listOf(6.0),
+        listOf(7.0),
+        listOf(8.0),
+        listOf(9.0),
+        listOf(10.0),
+        listOf(11.0),
+        listOf(12.0))
     assertEquals(
         "TrainingInput(" +
             "date=[2023-01-10T10:11:12Z], hour=[10], glucose=[2.0], glucoseSlope1=[3.0], " +

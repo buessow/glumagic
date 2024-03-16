@@ -1,9 +1,7 @@
 @file:OptIn(ExperimentalCli::class)
 package cc.buessow.glumagic
 
-import cc.buessow.glumagic.input.Config
-import cc.buessow.glumagic.input.DataLoader
-import cc.buessow.glumagic.input.InputProvider
+import cc.buessow.glumagic.input.*
 import cc.buessow.glumagic.mongodb.MongoApiInputProvider
 import cc.buessow.glumagic.mongodb.MongoDbInputProvider
 import kotlinx.cli.*
@@ -94,21 +92,6 @@ object Main {
     }
   }
 
-  private fun dump(input: InputProvider) = runBlocking {
-    for (dv in input.getGlucoseReadings(Instant.now().minusSeconds(1800L))) {
-      println("glucose $dv")
-    }
-    for (dv in input.getCarbs(Instant.now().minusSeconds(18000L))) {
-      println("carbs $dv")
-    }
-    val bpss = input.getBasalProfileSwitches(Instant.now().minusSeconds(1800L))
-    println("profile switch $bpss")
-
-    for (tb in input.getTemporaryBasalRates(Instant.now().minus(2L, ChronoUnit.HOURS))) {
-      println("temp $tb")
-    }
-  }
-
   private fun output(
       from: Instant, upto: Instant, input: InputProvider, config: Config, outFile: File?) {
     val config1 = Config(
@@ -123,7 +106,7 @@ object Main {
     val trainingData = DataLoader.getTrainingData(input, from, config1)
     println("Loaded ${trainingData.date.size} values")
     if (outFile == null) {
-      trainingData.writeCsv(OutputStreamWriter(System.out))
+      trainingData.writeCsv(OutputStreamWriter(System.out), 1000)
     } else if (outFile.extension == "csv") {
       outFile.outputStream().use { trainingData.writeCsv(OutputStreamWriter(it)) }
     } else if (outFile.extension == "json") {
@@ -135,8 +118,8 @@ object Main {
     return configFile?.let { Config.fromJson(configFile) } ?: Config(
         trainingPeriod = Duration.ZERO,
         predictionPeriod = Duration.ZERO,
-        carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-        insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
+        carbAction = LogNormAction(timeToPeak = Duration.ofMinutes(45), sigma = 0.5),
+        insulinAction = ExponentialInsulinModel.fiasp,
         hrLong = listOf(Duration.ofHours(12), Duration.ofHours(24)),
         hrHighThreshold = 120,
         freq = Duration.ofMinutes(5),
@@ -161,6 +144,10 @@ object Main {
   }
 
   private class QueryDb: Subcommand("db", "Query Mongo API") {
+    val from by option(ArgTypeDateTime, shortName = "from", description = "from date").required()
+    val upto by option(ArgTypeDateTime, shortName = "to", description = "up to date").required()
+    val configFile by option(ArgTypeInFile, shortName = "c", description = "config file")
+    val outFile by option(ArgTypeOutFile, shortName = "o", description = "output file")
     val userName by option(
         ArgType.String, shortName = "u", description = "MongoDB user name").required()
     val password by option(
@@ -170,10 +157,13 @@ object Main {
     val host by option(
         ArgType.String,
         shortName = "s", fullName = "server",
-        description = "MongoDB server host, e.g. 'mongodb+srv://cluster0.10utl.gcp.mongodb.net'").required()
+        description = "MongoDB server host, e.g. 'mongodb+srv://cluster0.10utl.gcp.mongodb.net'")
+        .default("mongodb+srv://cluster0.10utl.gcp.mongodb.net")
 
     override fun execute() {
-      MongoDbInputProvider(host, database, userName, password).use { input -> dump(input) }
+      MongoDbInputProvider(host, database, userName, password).use { input ->
+        output(from, upto, input, getConfig(configFile), outFile)
+      }
     }
   }
 

@@ -61,18 +61,12 @@ class Predictor private constructor(
 
   val isValid: Boolean get() = ModelVerifier(this).runAll()
 
-  fun predictGlucoseSlopes(inputData: FloatArray): List<Double> {
+  private fun predict(inputData: FloatArray): List<Double> {
     val cleanInput = inputData.map { f -> if (isNaN(f)) 0.0F else f }.toFloatArray()
     log.fine("input: ${cleanInput.joinToString { "%.2f".format(it) }}")
     val outputData = Array(1) { FloatArray(config.outputSize) }
      interpreter.run(Array (1) { cleanInput }, outputData)
     return outputData[0].map(Float::toDouble).toList()
-  }
-
-  @Suppress("UNUSED")
-  fun predictGlucoseSlopes(at: Instant, dp: InputProvider): List<Double> {
-    val (_, input) = DataLoader.getInputVector(dp, at - config.trainingPeriod, config)
-    return predictGlucoseSlopes(input)
   }
 
   private fun computeGlucose(lastGlucose: Double, slopes: List<Double>): List<Double> {
@@ -83,9 +77,14 @@ class Predictor private constructor(
   fun predictGlucose(at: Instant, dp: InputProvider): List<Double> {
     log.info("Predicting glucose at $at")
     val (lastGlucose, input) = DataLoader.getInputVector(dp, at, config)
-    return computeGlucose(lastGlucose.toDouble(), predictGlucoseSlopes(input)).also {
-      log.info("Output glucose: ${it.joinToString()}")
+    val p = predict(input)
+    val glucose = if (config.yValues[0].startsWith("gls_")) {
+      computeGlucose(lastGlucose, p)
+    } else {
+      p
     }
+    log.info("Output glucose: ${glucose.joinToString()}")
+    return glucose
   }
 
   override fun close() {

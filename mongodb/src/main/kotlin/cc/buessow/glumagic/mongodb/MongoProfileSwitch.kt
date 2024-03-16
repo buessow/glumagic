@@ -18,7 +18,7 @@ internal data class MongoProfileSwitch(
     val eventType: String = "Profile Switch") {
 
   private class ProfileBasal(val timeAsSeconds: Long, val value: Double) {
-    val duration get() = Duration.ofSeconds(timeAsSeconds)
+    val duration get(): Duration = Duration.ofSeconds(timeAsSeconds)
   }
   private class Profile(val basal: List<ProfileBasal>?)
 

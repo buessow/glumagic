@@ -11,8 +11,8 @@ class JsonParserTest {
     val config = JsonParser.fromJson<Config>("""{
         "trainingPeriodMinutes": 1,
         "predictionPeriodMinutes": 2,
-        "carbAction": { "mu": 1.1, "sigma": 1.2 },
-        "insulinAction": { "mu": 2.1, "sigma": 2.2 },
+        "carbAction": { "name": "LogNorm", "mu": 1.1, "sigma": 1.2 },
+        "insulinAction": { "name": "Exponential", "peak": 30, "total": 120 },
         "hrLongDurationMinutes": [ 10 ],
         "hrHighThreshold": 140,
         "freqMinutes": 2,
@@ -20,10 +20,10 @@ class JsonParserTest {
       }""")
     assertEquals(Duration.ofMinutes(1), config.trainingPeriod)
     assertEquals(Duration.ofMinutes(2), config.predictionPeriod)
-    assertEquals(1.1, config.carbAction.mu)
-    assertEquals(1.2, config.carbAction.sigma)
-    assertEquals(2.1, config.insulinAction.mu)
-    assertEquals(2.2, config.insulinAction.sigma)
+    assertEquals(1.1, (config.carbAction as LogNormAction).mu)
+    assertEquals(1.2, (config.carbAction as LogNormAction).sigma)
+    assertEquals(Duration.ofMinutes(30), (config.insulinAction as ExponentialInsulinModel).timeToPeak)
+    assertEquals(Duration.ofMinutes(120), (config.insulinAction as ExponentialInsulinModel).totalDuration)
     assertEquals(listOf(Duration.ofMinutes(10)), config.hrLong)
     assertEquals(140, config.hrHighThreshold)
     assertEquals(Duration.ofMinutes(2), config.freq)

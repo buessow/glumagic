@@ -2,6 +2,15 @@
 <project version="4">
   <component name="deploymentTargetDropDown">
     <value>
+      <entry key="All Tests">
+        <State />
+      </entry>
+      <entry key="End2EndTest">
+        <State />
+      </entry>
+      <entry key="PredictorTest">
+        <State />
+      </entry>
       <entry key="predictor">
         <State />
       </entry>

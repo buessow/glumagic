@@ -21,6 +21,13 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
           else -> and(it)
         }
       }
+
+    fun deduplicate(dateValues: List<DateValue>): List<DateValue> {
+      val r = dateValues.sorted().zipWithNext()
+          .filter { (dv0, dv1) -> dv0 != dv1 }
+          .map { (dv0, _) -> dv0 }
+      return r + dateValues.takeLast(1)
+    }
   }
 
   override fun close() {
@@ -70,7 +77,7 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
   }
 
   override suspend fun getGlucoseReadings(from: Instant, upto: Instant?): List<DateValue> {
-    return queryMillis<MongoGlucose>(from, upto)
+    return deduplicate(queryMillis<MongoGlucose>(from, upto, ne("sgv", null)))
   }
 
   override suspend fun getHeartRates(from: Instant, upto: Instant?): List<DateValue> = coroutineScope {
@@ -79,15 +86,18 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
     val hr2 = async { queryString<MongoHeartRateActivity>(from, upto, eventFilter, "samplingStart") }
     val hr3 = async { queryMillis<MongoHeartRateTreatment>(from, upto, eventFilter, "samplingStart") }
 
-    awaitAll(hr1, hr2, hr3).flatten().sortedBy { it.timestamp }
+    deduplicate(awaitAll(hr1, hr2, hr3).flatten().sortedBy { it.timestamp })
   }
 
+
   override suspend fun getCarbs(from: Instant, upto: Instant?): List<DateValue> {
-    return queryString<MongoCarbs>(from, upto, ne("carbs", null), "created_at")
+    return deduplicate(queryString<MongoCarbs>(
+        from, upto, ne("carbs", null), "created_at"))
   }
 
   override suspend fun getBoluses(from: Instant, upto: Instant?): List<DateValue> {
-    return queryString<MongoBolus>(from, upto, ne("insulin", null), "created_at")
+    return deduplicate(queryString<MongoBolus>(
+        from, upto, ne("insulin", null), "created_at"))
   }
 
   private suspend fun queryProfileSwitches(

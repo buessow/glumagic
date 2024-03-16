@@ -49,8 +49,9 @@ class MongoApiInputProviderTest {
     val reqBody = JsonParser.parseString(req.body.readString(Charsets.UTF_8)).asJsonObject
     assertEquals("entries", reqBody.get("collection").asString)
     assertEquals("test", reqBody.get("database").asString)
+    val d = '$'
     assertEquals(
-        """{"date":{"${'$'}gte":${date.toEpochMilli()}}}""",
+        """{"${d}and":[{"date":{"${d}gte":${date.toEpochMilli()}}},{"sgv":{"${d}ne":null}}]}""",
         reqBody.get("filter").toString())
     assertEquals("""{"date":1}""", reqBody.get("sort").toString())
   }

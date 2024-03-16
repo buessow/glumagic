@@ -8,7 +8,7 @@ data class MlTemporaryBasalRate(
     val duration: Duration,
     val rate: Double,
     val basal: Double? = null) {
-  val end get() = timestamp + duration
+  val end get(): Instant = timestamp + duration
 
   companion object {
     /** Adjusts duration of overlapping temporary basals to not end after

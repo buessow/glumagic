@@ -4,9 +4,7 @@ import android.Manifest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import cc.buessow.glumagic.BuildConfig
-import cc.buessow.glumagic.input.ArrayApproxCompare
-import cc.buessow.glumagic.input.Config
-import cc.buessow.glumagic.input.DataLoader
+import cc.buessow.glumagic.input.*
 import cc.buessow.glumagic.mongodb.MongoApiInputProvider
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -15,6 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 @RunWith(AndroidJUnit4::class)
@@ -43,8 +42,8 @@ class End2EndTest {
       val upto = Instant.parse("2024-01-01T00:00:00Z")
       val config = Config(
           trainingPeriod = Duration.between(from, upto),
-          carbAction = Config.LogNorm(peakInMinutes = 45, sigma = 0.5),
-          insulinAction = Config.LogNorm(peakInMinutes =60, sigma = 0.5),
+          carbAction = LogNormAction(timeToPeak = Duration.ofMinutes(45), sigma = 0.5),
+          insulinAction = ExponentialInsulinModel.fiasp,
           hrLong = listOf(Duration.ofHours(24), Duration.ofHours(48)),
           hrHighThreshold = 120,
           zone = ZoneOffset.UTC)
@@ -71,85 +70,127 @@ class End2EndTest {
         apiUrl = BuildConfig.MONGO_API_URL,
         database = BuildConfig.MONGO_DATABASE,
         apiKey = BuildConfig.MONGO_API_KEY).use { input ->
-      val at = Instant.parse("2023-10-01T10:10:00Z")
+      val time = Instant.parse("2023-10-01T10:10:00Z")
+      val localTime = time.atZone(ZoneId.of("CET"))
 
       val gl = runBlocking {
-        input.getGlucoseReadings(at-Duration.ofMinutes(6), at + Duration.ofHours(2))
+        input.getGlucoseReadings(
+            time - p.config.freq.multipliedBy(1L),
+            time + Duration.ofHours(3))
       }
-      assertEquals(22, gl.size)
+      println(gl)
+      assertNull(
+          ArrayApproxCompare.getMismatch(
+              gl.map { it.value },
+              listOf(
+                  119.000,
+                  130.000, 134.000, 134.000, 128.000, 125.000, 121.000,
+                  122.000, 121.000, 130.000, 116.000, 121.000, 114.000,
+                  123.000, 119.000, 119.000, 104.000, 114.000, 111.000,
+                  79.000, 97.000, 78.000, 87.000, 141.000, 151.000,
+                  152.000, 163.000, 180.000, 175.000, 179.000),
+              eps = 1e-2))
+
       assertNull(
          ArrayApproxCompare.getMismatch(
-            DataLoader.align(
-                at, gl, at + Duration.ofHours(2), Duration.ofMinutes(5)).toList(),
-            listOf(
-                124.629F, 132.047F, 134.000F, 131.010F, 126.500F, 122.953F, 121.512F, 121.500F,
-                125.395F, 123.024F, 118.542F, 117.430F, 118.605F, 120.953F, 119.000F, 111.349F,
-                109.117F, 112.470F, 94.678F, 88.211F, 94.575F, 89.822F, 85.068F, 80.314F),
-            eps = 1e-2))
+             DataLoader.align(
+                 time, gl,time + Duration.ofHours(3), p.config.freq).toList(),
+             listOf(
+                 124.629, 132.047, 134.000, 131.010, 126.500, 122.953,
+                 121.512, 121.500, 125.395, 123.024, 118.542, 117.430,
+                 118.605, 120.953, 119.000, 111.349, 109.117, 112.470,
+                 94.678, 88.211, 94.575, 89.822, 85.068, 80.314,
+                 82.605, 87.000, 103.297, 114.090, 124.883, 141.000,
+                 146.067, 151.508, 157.611, 171.670, 177.458, 177.033),
+             eps = 1e-2))
 
-      val (lastGlucose, inputVector) = DataLoader.getInputVector(input, at, p.config)
-      ArrayApproxCompare.approxEquals(80.313F, lastGlucose, 1e-2)
+      val (lastGlucose, inputVector) = DataLoader.getInputVector(input, time, p.config)
+      ArrayApproxCompare.approxEquals(80.314F, lastGlucose, 1e-2)
 
-      assertEquals(14F, inputVector[0]) // Hour
-      val period = 36
+      assertEquals(12, localTime.hour)
+      assertEquals(localTime.hour.toFloat(), inputVector[0]) // Hour
+      val period = (p.config.trainingPeriod.seconds / p.config.freq.seconds).toInt()
+      var start = 1
+      assertNull(ArrayApproxCompare.getMismatch( // Glucose
+          inputVector.toList().drop(start).take(period),
+          listOf(
+              124.629F, 132.047F, 134.000F, 131.010F, 126.500F, 122.953F, 121.512F, 121.500F,
+              125.395F, 123.024F, 118.542F, 117.430F, 118.605F, 120.953F, 119.000F, 111.349F,
+              109.117F, 112.470F, 94.678F, 88.211F, 94.575F, 89.822F, 85.068F, 80.314F),
+          eps = 1e-3))
+      start += period
       assertNull(ArrayApproxCompare.getMismatch( // Glucose Slopes
-          inputVector.toList().drop(1).take(period),
+          inputVector.toList().drop(start).take(period),
           listOf(
-            0.000F, 0.937F, -0.104F, -0.750F, -0.806F, -0.499F, -0.145F, 0.388F, 0.152F, -0.685F,
-            -0.559F, 0.006F, 0.352F, 0.039F, -0.960F, -0.988F, 0.112F, -1.444F, -2.426F, -0.010F,
-            0.161F, -0.951F, -0.951F, -0.475F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F),
-          eps=1e-3))
+              0.000F, 1.484F, 0.391F, -0.598F, -0.902F, -0.709F, -0.288F, -0.002F, 0.779F,
+              -0.474F, -0.896F, -0.222F, 0.235F, 0.470F, -0.391F, -1.530F, -0.446F, 0.671F,
+              -3.558F, -1.293F, 1.273F, -0.951F, -0.951F, -0.951F),
+          eps = 1e-3))
+      start += period
       assertNull(ArrayApproxCompare.getMismatch( // Glucose Slopes 2
-          inputVector.toList().drop(1 + period).take(period),
+          inputVector.toList().drop(start).take(period),
           listOf(
-              0.000F, -0.010F, -0.169F, -0.070F, 0.025F, 0.066F, 0.089F, 0.030F, -0.107F, -0.071F,
-              0.069F, 0.091F, 0.003F, -0.131F, -0.103F, 0.107F, -0.046F, -0.254F, 0.143F, 0.259F,
-              -0.094F, -0.111F, 0.048F, 0.095F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F, 0F),
-          eps=1e-3))
+              0.000F, 0.297F, -0.219F, -0.198F, -0.061F, 0.039F, 0.084F, 0.057F, 0.156F,
+              -0.251F, -0.084F, 0.135F, 0.092F, 0.047F, -0.172F, -0.228F, 0.217F, 0.223F,
+              -0.846F, 0.453F, 0.513F, -0.445F, -0.000F, 0.000F),
+          eps = 1e-3))
+      start += period
+      assertNull(ArrayApproxCompare.getMismatch( // Insulin
+          inputVector.toList().drop(start).take(period + 12),
+          listOf(0.108F, 0.070F, 0.135F, 0.273F, 0.118F, 0.090F, 0.113F, 0.131F, 0.147F,
+                 0.322F, 0.212F, 0.154F, 0.119F, 0.286F, 0.266F, 0.169F, 0.064F, 0.060F,
+                 0.064F, 0.000F, 0.000F, 0.000F, 0.000F, 0.111F, 0.333F, 0.342F, 0.002F,
+                 0.002F, 0.002F, 0.078F, 1.477F, 0.167F, 0.427F, 0.183F, 0.000F, 0.234F),
+          eps = 1e-3))
+      start += period + 12
       assertNull(ArrayApproxCompare.getMismatch( // Insulin Action
-          inputVector.toList().drop(1 + 2 * period).take(period),
+          inputVector.toList().drop(start).take(period + 12),
+          listOf(0.215F, 0.205F, 0.196F, 0.187F, 0.181F, 0.175F, 0.170F, 0.164F, 0.160F,
+                 0.156F, 0.153F, 0.152F, 0.151F, 0.150F, 0.150F, 0.150F, 0.152F, 0.152F,
+                 0.152F, 0.151F, 0.149F, 0.146F, 0.142F, 0.138F, 0.134F, 0.132F, 0.132F,
+                 0.131F, 0.130F, 0.128F, 0.126F, 0.132F, 0.140F, 0.148F, 0.156F, 0.161F),
+          eps = 1e-3))
+      start += period + 12
+      assertNull(ArrayApproxCompare.getMismatch( // Carbs
+          inputVector.toList().drop(start).take(period + 12),
           listOf(
-              2.345F, 1.833F, 1.408F, 1.065F, 0.796F, 0.590F, 0.442F, 0.351F, 0.319F, 0.351F,
-              0.445F, 0.587F, 0.749F, 0.908F, 1.052F, 1.188F, 1.326F, 1.472F, 1.618F, 1.756F,
-              1.883F, 1.998F, 2.091F, 2.145F, 2.143F, 2.076F, 1.947F, 1.768F, 1.558F, 1.348F,
-              1.180F, 1.094F, 1.097F, 1.158F, 1.233F, 1.312F),
-          eps=1e-3))
+              0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F,
+              0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F,
+              0.000F, 30.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F,
+              0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F),
+          eps = 1e-3))
+      start += period + 12
       assertNull(ArrayApproxCompare.getMismatch( // Carb Action
-          inputVector.toList().drop(1 + 3 * period).take(period),
+          inputVector.toList().drop(start).take(period + 12),
           listOf(
-              0.525F, 0.453F, 0.392F, 0.339F, 0.294F, 0.255F, 0.222F, 0.000F, 0.000F, 0.000F,
-              0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F,
-              0.000F, 0.146F, 1.772F, 6.233F, 12.622F, 19.008F, 23.976F, 26.988F, 28.130F, 27.782F,
-              26.395F, 24.373F, 22.033F, 19.601F, 17.226F, 14.999F),
-          eps=1e-3))
-      assertNull(ArrayApproxCompare.getMismatch( // Carb Action
-          inputVector.toList().drop(1 + 3 * period).take(period),
-          listOf(
-              0.525F, 0.453F, 0.392F, 0.339F, 0.294F, 0.255F, 0.222F, 0.000F, 0.000F, 0.000F,
-              0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F,
-              0.000F, 0.146F, 1.772F, 6.233F, 12.622F, 19.008F, 23.976F, 26.988F, 28.130F, 27.782F,
-              26.395F, 24.373F, 22.033F, 19.601F, 17.226F, 14.999F),
-          eps=1e-3))
+              0.525F, 0.453F, 0.392F, 0.339F, 0.294F, 0.255F, 0.222F, 0.000F, 0.000F,
+              0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F, 0.000F,
+              0.000F, 0.000F, 0.000F, 0.146F, 1.772F, 6.233F, 12.622F, 19.008F, 23.976F,
+              26.988F, 28.130F, 27.782F, 26.395F, 24.373F, 22.033F, 19.601F, 17.226F, 14.999F),
+          eps = 1e-3))
 
+      start += period + 12
       assertNull(ArrayApproxCompare.getMismatch( // Heart Rate
-          inputVector.toList().drop(1 + 4 * period).take(period),
+          inputVector.toList().drop(start).take(period + 12),
           listOf(
               68.400F, 66.000F, 63.200F, 70.600F, 60.600F, 52.200F, 52.400F, 51.400F, 49.800F,
               48.400F, 49.800F, 51.000F, 52.200F, 52.400F, 52.000F, 52.000F, 52.600F, 51.200F,
               51.200F, 53.800F, 52.000F, 52.400F, 51.692F, 50.583F, 60.000F, 60.000F, 60.000F,
               60.000F, 60.000F, 60.000F, 60.000F, 60.000F, 60.000F, 60.000F, 60.000F, 60.000F),
           eps=1e-3))
+      start += period + 12
       assertNull(ArrayApproxCompare.getMismatch( // Long Heart Rate
-          inputVector.toList().drop(1 + 5 * period),  // no [List::take] to check overall length
+          inputVector.toList().drop(start),  // no [List::take] to check overall length
           listOf(2F, 2F),
-          eps=1e-3))
+          eps = 1e-3))
 
-      val glucosePredictions = p.predictGlucose(at, input)
+      val glucosePredictions = p.predictGlucose(time, input)
       assertNull(ArrayApproxCompare.getMismatch(
           glucosePredictions,
-          listOf(80.349, 80.415, 81.223, 82.072, 82.467, 83.029,
-                 83.347, 83.526, 84.138, 84.676, 85.787, 86.391),
-          1e-2))
+          listOf(
+              65.805, 69.351, 74.385, 80.774, 84.167, 87.005,
+              91.000, 94.929, 99.159, 98.276, 100.868, 101.883),
+          eps = 1e-2))
     }
   }
 }

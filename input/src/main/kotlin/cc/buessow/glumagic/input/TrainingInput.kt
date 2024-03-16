@@ -11,17 +11,17 @@ import kotlin.reflect.full.primaryConstructor
 data class TrainingInput(
     val date: List<Instant>,
     val hour: List<Int>,
-    val glucose: List<Float>,
-    val glucoseSlope1: List<Float>,
-    val glucoseSlope2: List<Float>,
-    val heartRate: List<Float>,
-    val hrLong1: List<Float>,
-    val hrLong2: List<Float>,
-    val carbs: List<Float>,
-    val carbAction: List<Float>,
-    val bolus: List<Float>,
-    val basal: List<Float>,
-    val insulinAction: List<Float>,
+    val glucose: List<Double>,
+    val glucoseSlope1: List<Double>,
+    val glucoseSlope2: List<Double>,
+    val heartRate: List<Double>,
+    val hrLong1: List<Double>,
+    val hrLong2: List<Double>,
+    val carbs: List<Double>,
+    val carbAction: List<Double>,
+    val bolus: List<Double>,
+    val basal: List<Double>,
+    val insulinAction: List<Double>,
 ) {
 
   companion object {
@@ -65,11 +65,11 @@ data class TrainingInput(
     }
   }
 
-  fun writeCsv(out: Writer) {
+  fun writeCsv(out: Writer, head: Int? = null) {
     CSVFormat.DEFAULT.print(out).apply {
       val propertyNames = propertyNames
       printRecord(propertyNames)
-      records().forEach { r -> printRecord(r) }
+      records().take(head ?: Int.MAX_VALUE).forEach { r -> printRecord(r) }
       close()
     }
   }

@@ -1,6 +1,5 @@
 package cc.buessow.glumagic.input
 
-import cc.buessow.glumagic.input.ArrayApproxCompare.Companion.approxEquals
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.time.Duration
@@ -35,5 +34,19 @@ class ExponentialInsulinModelTest {
     val r10 = fiasp.valuesAt(listOf(DateValue(t, 10.0)), t, dates)
     assertNull(ArrayApproxCompare.getMismatch(r10, expected.map { 2 * it }, eps = 1e-2))
     assertEquals(10.0, r10.sum(), 1e-2)
+  }
+
+  @Test
+  fun valuesAtLong() {
+    val exm = ExponentialInsulinModel.fiasp
+    val t = Instant.parse("2013-12-13T20:00:00Z")
+    val duration = Duration.ofDays(120)
+    val bolusTimes = t ..< (t + duration) step Duration.ofMinutes(6L)
+    val bolus = bolusTimes.map { ts -> DateValue(ts, 2.0) }
+    val times = t ..< t + duration + exm.totalDuration step Duration.ofMinutes(5)
+    val a = exm.valuesAt(bolus, t, times)
+    val totalBolus = bolus.sumOf { it.value }
+    assertTrue(a.sum() in totalBolus * 0.99 .. totalBolus * 1.01) {
+      "bolus: $totalBolus action: ${a.sum()}"}
   }
 }

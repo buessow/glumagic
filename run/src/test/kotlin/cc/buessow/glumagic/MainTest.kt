@@ -7,7 +7,7 @@ import java.time.Instant
 internal class MainTest {
   @Test
   fun main() {
-    Main.main(arrayOf<String>("version"))
+    Main.main(arrayOf("version"))
   }
 
   @Test
