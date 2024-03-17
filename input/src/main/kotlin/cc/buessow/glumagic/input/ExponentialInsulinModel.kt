@@ -8,7 +8,7 @@ import kotlin.math.exp
  * https://seemycgm.com/2017/10/21/exponential-insulin-curves-fiasp/
  */
 class ExponentialInsulinModel(
-    val timeToPeak: Duration, val totalDuration: Duration): ActionModel {
+    val timeToPeak: Duration, override val totalDuration: Duration): ActionModel {
 
   companion object {
     val fiasp = ExponentialInsulinModel(

@@ -65,11 +65,14 @@ data class TrainingInput(
     }
   }
 
-  fun writeCsv(out: Writer, head: Int? = null) {
+  fun writeCsv(out: Writer, start: Instant? = null, head: Int? = null) {
     CSVFormat.DEFAULT.print(out).apply {
       val propertyNames = propertyNames
       printRecord(propertyNames)
-      records().take(head ?: Int.MAX_VALUE).forEach { r -> printRecord(r) }
+      records()
+          .filter { start == null || (it[0] as Instant) >= start }
+          .take(head ?: Int.MAX_VALUE)
+          .forEach { r -> printRecord(r) }
       close()
     }
   }

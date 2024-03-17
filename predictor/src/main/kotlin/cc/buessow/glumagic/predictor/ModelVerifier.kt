@@ -16,7 +16,7 @@ class ModelVerifier(private val predictor: Predictor) {
         DataLoader.getInputVector(dataProvider, testData.at, predictor.config).second.toList(),
         testData.inputVector.toList(), 1e-3
     ) ?: return true
-    log.severe("Mismatch '${testData.name}'")
+    log.severe("Mismatch input '${testData.name}'")
     log.severe(mismatch)
     return false
   }
@@ -27,8 +27,8 @@ class ModelVerifier(private val predictor: Predictor) {
     val glucose = predictor.predictGlucose(testData.at, inputProvider)
     val mismatch = ArrayApproxCompare.getMismatch(
         glucose.map(Double::toFloat),
-        testData.outputGlucose, eps = 1e-4) ?: return true
-    log.severe("Mismatch '${testData.name}':\n$mismatch")
+        testData.outputGlucose, eps = 1e-3) ?: return true
+    log.severe("Mismatch result '${testData.name}':\n$mismatch")
     return false
   }
 

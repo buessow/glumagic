@@ -41,12 +41,13 @@ dependencyResolutionManagement {
         create("libs") {
             library("apache.commons.csv", "org.apache.commons:commons-csv:1.10.0")
             library("gson", "com.google.code.gson:gson:2.8.9")
-            library("reactivex", "io.reactivex.rxjava3:rxjava:3.0.4")
-            library("mongodb", "org.mongodb:mongodb-driver-kotlin-coroutine:4.11.0")
+            library("jdsp", "com.github.psambit9791:jdsp:3.0.0")
             library("kotlinx.cli", "org.jetbrains.kotlinx:kotlinx-cli:0.3.6")
             library("kotlinx.coroutines.core", "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             library("kotlinx.coroutines.rx3","org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.3.9")
+            library("mongodb", "org.mongodb:mongodb-driver-kotlin-coroutine:4.11.0")
             library("okHttp3", "com.squareup.okhttp3:okhttp:$okHttpVersion")
+            library("reactivex", "io.reactivex.rxjava3:rxjava:3.0.4")
             library("tensorflowLite", "org.tensorflow:tensorflow-lite:2.14.0")
             library("tensorflowLite.support", "org.tensorflow:tensorflow-lite-support:0.4.4")
         }

@@ -24,14 +24,23 @@ class ArrayApproxCompare {
       return if (expected.size == actual.size) null else size
     }
 
+    private fun formatMismatch(values: Collection<Number>, pos: Int): String {
+      val limit = 30
+      val pre = if (pos > limit) ".., " else ""
+      val form = { f: Number -> "%.3f".format(f) + if(f is Float) "F" else "" }
+      return values
+          .mapIndexed { i, f -> if (i == pos) "**${form(f)}" else form(f) }
+          .drop(if (pos > limit) pos - 2 else 0)
+          .joinToString(prefix = pre)
+    }
+
     fun getMismatch(
         actual: Collection<Number>,
         expected: Collection<Number>,
         eps: Double): String? {
       val mismatch = firstMismatch(expected.toList(), actual.toList(), eps) ?: return null
-      val form = { f: Number -> "%.3f".format(f) + if(f is Float) "F" else "" }
-      val a = actual.mapIndexed { i, f -> if (i == mismatch) "**${form(f)}" else form(f) }.joinToString()
-      val e = expected.mapIndexed { i, f -> if (i == mismatch) "**${form(f)}" else form(f) }.joinToString()
+      val a = formatMismatch(actual, mismatch)
+      val e = formatMismatch(expected, mismatch)
       return "exp:${"%3d".format(mismatch)} [$e]\nbut was [$a]"
     }
   }

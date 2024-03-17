@@ -12,6 +12,8 @@ class LogNormAction(var mu: Double, val sigma: Double = 1.0): ActionModel {
     internal val maxAge: Duration = Duration.ofHours(4)
   }
 
+  override val totalDuration = maxAge
+
   constructor(timeToPeak: Duration, sigma: Double = 1.0) : this(
       mu = ln(timeToPeak.toMillis() / 3600_000.0) + sigma * sigma,
       sigma = sigma

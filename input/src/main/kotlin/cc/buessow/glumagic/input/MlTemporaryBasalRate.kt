@@ -17,7 +17,7 @@ data class MlTemporaryBasalRate(
       for ((temp, tempNext) in tempBasals.zipWithNext()) {
         if (temp.end <= tempNext.timestamp) {
           // Temporary basals do not overlap.
-          yield(temp)
+          if (temp.duration > Duration.ZERO) yield(temp)
         } else {
           val remaining = Duration.between(temp.timestamp, tempNext.timestamp)
           if (remaining > Duration.ZERO) {

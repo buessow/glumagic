@@ -6,7 +6,6 @@ import java.io.InputStream
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZoneOffset
 
 @Suppress("unused")
 data class Config(
@@ -22,13 +21,13 @@ data class Config(
     @SerializedName("freqMinutes")
     val freq: Duration = Duration.ofMinutes(5),
     val testData: List<TestData> = emptyList(),
-    @SerializedName("zoneId")
-    private val zone: ZoneId?,
+    val e2eTests: List<TestData> = emptyList(),
+    val zoneId: ZoneId,
     val xValues: List<String> = emptyList(),
     val yValues: List<String> = emptyList(),
+    val smoothingFilter: String? = null,
+    val smoothingParams: Map<String, Any>? = emptyMap()
 ) {
-
-  val zoneId: ZoneId get() = zone ?: ZoneOffset.UTC
 
   companion object {
     fun fromJson(input: InputStream): Config = JsonParser.fromJson(input)
@@ -61,8 +60,8 @@ data class Config(
       val heartRates: List<Double>,
       val carbEvents: List<DateValue>,
       val insulinEvents: List<DateValue>,
-      val hrLongCounts: List<Int>,
-  ) {
+      val hrLongCounts: List<Int>) {
+
     override fun equals(other: Any?) = super.equals(other)
     override fun hashCode() = super.hashCode()
   }

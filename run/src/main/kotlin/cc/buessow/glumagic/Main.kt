@@ -5,14 +5,12 @@ import cc.buessow.glumagic.input.*
 import cc.buessow.glumagic.mongodb.MongoApiInputProvider
 import cc.buessow.glumagic.mongodb.MongoDbInputProvider
 import kotlinx.cli.*
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.OutputStreamWriter
 import java.time.*
 import java.time.format.DateTimeFormatterBuilder
 import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoField
-import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalQueries
 
 object Main {
@@ -102,11 +100,13 @@ object Main {
         hrLong = config.hrLong,
         hrHighThreshold = config.hrHighThreshold,
         freq = config.freq,
-        zone = config.zoneId)
+        zoneId = config.zoneId)
+    val expectedSize = Duration.between(from, upto).dividedBy(config1.freq)
+    println("Loading $from .. $upto size: $expectedSize")
     val trainingData = DataLoader.getTrainingData(input, from, config1)
     println("Loaded ${trainingData.date.size} values")
     if (outFile == null) {
-      trainingData.writeCsv(OutputStreamWriter(System.out), 1000)
+      trainingData.writeCsv(OutputStreamWriter(System.out), start = Instant.parse("2023-10-01T10:00:00Z"), head = 1)
     } else if (outFile.extension == "csv") {
       outFile.outputStream().use { trainingData.writeCsv(OutputStreamWriter(it)) }
     } else if (outFile.extension == "json") {
@@ -123,7 +123,7 @@ object Main {
         hrLong = listOf(Duration.ofHours(12), Duration.ofHours(24)),
         hrHighThreshold = 120,
         freq = Duration.ofMinutes(5),
-        zone = ZoneId.of("CET"))
+        zoneId = ZoneId.of("CET"))
   }
 
   private class QueryApi: Subcommand("api", "Query Mongo API") {

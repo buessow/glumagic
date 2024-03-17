@@ -135,24 +135,35 @@ abstract class MongoInputProvider internal constructor() : Closeable, InputProvi
           limit = 1).firstOrNull() ?: return@async null
 
       // If [active] is expired, just return permanent.
-      permanent to (active.takeIf { a -> a.start.plus(duration) > from } ?:permanent)
-    }.apply { start() }
+      permanent to (active.takeIf { a -> a.start.plus(duration) > from } ?: permanent)
+    }
 
     val switches = async { queryProfileSwitches(
         after = from,
         until = upto,
-        sort = Sorts.ascending("created_at")) }.apply { start() }
+        sort = Sorts.ascending("created_at")) }
     val (permanent, active) = pa.await() ?: return@coroutineScope null
     MlProfileSwitches(permanent, active, switches.await())
   }
 
   override suspend fun getTemporaryBasalRates(from: Instant, upto: Instant?): List<MlTemporaryBasalRate> {
-    return query<MongoTemporaryBasal>(
-        and(gte("created_at", from.toString()),
-            upto?.let { lt("created_at", it.toString()) },
-            `in`("eventType", "Temp Basal")),
-        Sorts.ascending("created_at"))
-        .map(MongoTemporaryBasal::toMlTemporaryBasalRate)
-        .toList()
+    return coroutineScope {
+      val before = query<MongoTemporaryBasal>(
+          and(lt("created_at", from.toString()),
+              `in`("eventType", "Temp Basal")),
+          Sorts.descending("created_at"),
+          limit = 1)
+          .map(MongoTemporaryBasal::toMlTemporaryBasalRate)
+          .toList()
+      val within = query<MongoTemporaryBasal>(
+          and(gte("created_at", from.toString()),
+              upto?.let { lt("created_at", it.toString()) },
+              `in`("eventType", "Temp Basal")),
+          Sorts.ascending("created_at"))
+          .map(MongoTemporaryBasal::toMlTemporaryBasalRate)
+          .toList()
+
+      before + within
+    }
   }
 }

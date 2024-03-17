@@ -22,7 +22,7 @@ class DataLoaderTest {
       carbAction = LogNormAction(timeToPeak = ofMinutes(45), sigma = 0.5),
       insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
       hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-      zone = ZoneId.of("UTC"))
+      zoneId = ZoneId.of("UTC"))
 
   private val now = Instant.parse("2013-12-13T20:00:00Z")
   private val from = now - config.trainingPeriod
@@ -78,14 +78,28 @@ class DataLoaderTest {
   }
 
   @Test
+  fun align_gap() {
+    val values = listOf(
+        DateValue(now - ofMinutes(8), 25.0),
+        DateValue(now - ofMinutes(4), 20.0),
+        DateValue(now + ofMinutes(1), 15.0),
+        DateValue(now + ofMinutes(12), 5.0)
+    )
+    val aligned = DataLoader.align(now, values, now + ofMinutes(20), config.freq)
+    assertCollectionEqualsF(aligned.toList(), 16.0, 11.36, 6.82, 5.0, eps = 1e-2)
+  }
+
+  @Test
   fun loadGlucoseReadings_empty() = runBlocking {
     val dp = mock<InputProvider> {
       onBlocking { getGlucoseReadings(any(), anyOrNull()) }.thenReturn(emptyList())
     }
     val dataLoader = DataLoader(dp, now, config)
     val values = dataLoader.loadGlucoseReadings()
-    assertCollectionEqualsF(values, *DoubleArray(6) { Double.NaN }, eps = 1e-2)
-    verify(dp).getGlucoseReadings(now - DataLoader.preFetch, now + config.trainingPeriod)
+    assertCollectionEqualsF(values, *DoubleArray(8) { Double.NaN }, eps = 1e-2)
+    verify(dp).getGlucoseReadings(
+        now - DataLoader.preFetch - Duration.ofMinutes(10),
+        now + config.trainingPeriod)
     Unit
   }
 
@@ -101,9 +115,10 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadGlucoseReadings()
-    assertCollectionEqualsF(values, Double.NaN, 80.0, 120.0, 120.0, 120.0, 120.0, eps = 1e-2)
+    assertCollectionEqualsF(
+        values, Double.NaN, Double.NaN, Double.NaN,80.0, 120.0, 120.0, 120.0, 120.0, eps = 1e-2)
     verify(dp).getGlucoseReadings(
-        Instant.parse("2013-12-13T19:24:00Z"),
+        Instant.parse("2013-12-13T19:14:00Z"),
         Instant.parse("2013-12-13T20:00:00Z"))
     Unit
   }
@@ -115,9 +130,9 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadHeartRates()
-    assertCollectionEqualsF(values, *DoubleArray(6) { Double.NaN }, 60.0, 60.0, 60.0, eps = 1e-2)
+    assertCollectionEqualsF(values, *DoubleArray(6) { 60.0 }, 60.0, 60.0, 60.0, eps = 1e-2)
     verify(dp).getHeartRates(
-        Instant.parse("2013-12-13T19:24:00Z"),Instant.parse("2013-12-13T20:00:00Z"))
+        Instant.parse("2013-12-13T19:24:00Z"),Instant.parse("2013-12-13T20:15:00Z"))
     Unit
   }
 
@@ -134,10 +149,10 @@ class DataLoaderTest {
     val dataLoader = DataLoader(dp, Instant.parse("2013-12-13T19:30:00Z"), config)
     val values = dataLoader.loadHeartRates()
     assertCollectionEqualsF(
-        values, Double.NaN, 80.0, 120.0, 120.0, 120.0, 120.0, 60.0, 60.0, 60.0, eps = 1e-2
+        values, 60.0, 80.0, 120.0, 120.0, 120.0, 120.0, 120.0, 120.0, 120.0, eps = 1e-2
     )
     verify(dp).getHeartRates(
-        Instant.parse("2013-12-13T19:24:00Z"), Instant.parse("2013-12-13T20:00:00Z"))
+        Instant.parse("2013-12-13T19:24:00Z"), Instant.parse("2013-12-13T20:15:00Z"))
     Unit
   }
 
@@ -183,7 +198,7 @@ class DataLoaderTest {
         insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
         hrHighThreshold = 99,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-        zone = ZoneId.of("UTC"))
+        zoneId = ZoneId.of("UTC"))
     val dp = mock<InputProvider> {
       onBlocking { getHeartRates(any(), any()) }.thenReturn(
         (dataFrom ..< upto step config.freq).mapIndexed { i, t ->
@@ -214,7 +229,7 @@ class DataLoaderTest {
         insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
         hrHighThreshold = 99,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-        zone = ZoneId.of("UTC"))
+        zoneId = ZoneId.of("UTC"))
     val dp = mock<InputProvider> {
       onBlocking { getHeartRates(any(), any()) }.thenReturn(
           (dataFrom ..< upto step config.freq).mapIndexed { i, t ->
@@ -309,7 +324,7 @@ class DataLoaderTest {
     assertCollectionEqualsF(basal, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, eps = 1e-4)
     assertCollectionEqualsF(
         action,
-        2.52, 2.43, 2.83, 3.61, 4.23, 4.72, 5.09, 5.37, 5.55,
+        40.55, 36.93, 33.43, 30.25, 28.83, 31.72, 39.79, 51.50, 64.30,
         eps = 1e-2)
     verify(dp).getBoluses(
         Instant.parse("2013-12-13T15:30:00Z"),
@@ -337,7 +352,7 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, now, config)
     assertCollectionEquals(
-        dataLoader.loadBasalRates(),
+        dataLoader.loadBasalRates().drop(config.insulinAction.totalDuration / config.freq),
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0),
         DateValue(Instant.parse("2013-12-13T00:05:00Z"), 2.0),
         DateValue(Instant.parse("2013-12-13T00:10:00Z"), 2.0),
@@ -380,7 +395,7 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, now, config)
     assertCollectionEquals(
-        dataLoader.loadBasalRates(),
+        dataLoader.loadBasalRates().drop(config.insulinAction.totalDuration /  config.freq),
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0),
         DateValue(Instant.parse("2013-12-13T00:05:00Z"), 2.0),
         DateValue(Instant.parse("2013-12-13T00:10:00Z"), 2.2),
@@ -413,7 +428,7 @@ class DataLoaderTest {
     }
     val dataLoader = DataLoader(dp, now, config)
     assertCollectionEquals(
-        dataLoader.loadBasalRates(),
+        dataLoader.loadBasalRates().drop(config.insulinAction.totalDuration /  config.freq),
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0 + 4 * 2.0),
         DateValue(Instant.parse("2013-12-13T00:05:00Z"), 2 * 2.0 + 3 * 3.0),
         DateValue(Instant.parse("2013-12-13T00:10:00Z"), 5 * 3.0),
@@ -434,7 +449,8 @@ class DataLoaderTest {
         DateValue(Instant.parse("2013-12-13T02:00:00Z"), 3.0)
     )
     assertCollectionEquals(
-        DataLoader.applyTemporaryBasals(basals, emptyList(), Instant.parse("2013-12-13T03:00:00Z")),
+        DataLoader.applyTemporaryBasals(
+            basals, emptyList(), Instant.parse("2013-12-13T03:00:00Z")),
         DateValue(Instant.parse("2013-12-13T00:00:00Z"), 1.0),
         DateValue(Instant.parse("2013-12-13T01:00:00Z"), 2.0),
         DateValue(Instant.parse("2013-12-13T02:00:00Z"), 3.0)
@@ -530,7 +546,7 @@ class DataLoaderTest {
         insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
         hrHighThreshold = 120,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-        zone = ZoneId.of("CET"))
+        zoneId = ZoneId.of("CET"))
     config.trainingPeriod / config.freq
 
     val input: InputProvider = mock {
@@ -546,8 +562,8 @@ class DataLoaderTest {
         date = (at ..< (at + config.trainingPeriod) step config.freq).toList(),
         hour = List(6) { 1 },
         glucose = List(6) { Double.NaN },
-        glucoseSlope1 = List(6) { Double.NaN },
-        glucoseSlope2 = List(6) { Double.NaN },
+        glucoseSlope1 = List(6) { 0.0 },
+        glucoseSlope2 = List(6) { 0.0 },
         heartRate = List(6) { Double.NaN },
         hrLong1 = List(6) { 0.0 },
         hrLong2 = List(6) { 0.0 },
@@ -569,7 +585,7 @@ class DataLoaderTest {
         insulinAction = LogNormAction(timeToPeak = ofMinutes(60), sigma = 0.5),
         hrHighThreshold = 120,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
-        zone = ZoneId.of("CET"))
+        zoneId = ZoneId.of("CET"))
     val dates = (at..<(at + config.trainingPeriod) step config.freq).toList()
 
     val input: InputProvider = mock {
@@ -598,20 +614,24 @@ class DataLoaderTest {
         hrLong2 = List(6) { i -> 14.0 + i },
         carbs = listOf(0.0, 10.0, 0.0, 0.0, 0.0, 0.0),
         carbAction = listOf(
-            0.0, 0.0, 6.014808418383709E-4, 0.10177184160514258, 0.8399422757728754, 2.520003225935824),
+            0.0, 0.0, 6.014808418383709E-4,
+            0.10177184160514258, 0.8399422757728754, 2.520003225935824),
         bolus = List(6) { 0.0 },
         basal = List(6) { 0.0 },
         insulinAction = List(6) { 0.0 })
     assertEquals(expected, td)
 
     val qat = at - DataLoader.preFetch
-    verifyBlocking(input) { getGlucoseReadings(qat, at + config.trainingPeriod) }
-    verifyBlocking(input) { getHeartRates(at - config.hrLong.max(), at + config.trainingPeriod) }
-    verifyBlocking(input) { getBasalProfileSwitches(at, at + config.trainingPeriod) }
     verifyBlocking(input) {
-      getCarbs(at - LogNormAction.maxAge, at + config.trainingPeriod) }
+      getGlucoseReadings(qat - ofMinutes(10), at + config.trainingPeriod) }
     verifyBlocking(input) {
-      getBoluses(at - LogNormAction.maxAge, at + config.trainingPeriod) }
+      getHeartRates(at - config.hrLong.max(), at + config.trainingPeriod) }
+    verifyBlocking(input) { getBasalProfileSwitches(
+        at - config.insulinAction.totalDuration, at + config.trainingPeriod) }
+    verifyBlocking(input) {
+      getCarbs(at - config.carbAction.totalDuration, at + config.trainingPeriod) }
+    verifyBlocking(input) {
+      getBoluses(at - config.insulinAction.totalDuration, at + config.trainingPeriod) }
   }
 
   @Test
@@ -630,7 +650,7 @@ class DataLoaderTest {
       onBlocking { getCarbs(any(), anyOrNull()) }.thenReturn(listOf(
           DateValue(Instant.parse("2013-12-13T00:05:00Z"), 10.0)))
       onBlocking { getBoluses(any(), anyOrNull()) }.thenReturn(listOf(
-          DateValue(Instant.parse("2013-12-13T00:20:00Z"), 12.0)))
+          DateValue(Instant.parse("2013-12-13T00:10:00Z"), 12.0)))
       onBlocking { getTemporaryBasalRates(any(), anyOrNull()) }.thenReturn(emptyList())
       onBlocking { getBasalProfileSwitches(any(), anyOrNull()) }.thenReturn(null)
     }
@@ -645,26 +665,30 @@ class DataLoaderTest {
         xValues = listOf(
             "gl_00", "gls_05", "gls2_10",
             "hr_15", "hr_long_15", "hr_lon2_15",
-            "ins_20", "ins_25", "ia_25",
+            "ins_10", "ins_25", "ia_25",
             "0", "3.14",
             "carbs_05", "ca_20"))
     val (last2, v2) = DataLoader.getInputVector(input, at, c2)
     assertEquals(105.0, last2)
     assertNull(ArrayApproxCompare.getMismatch(
-        listOf(100F, 0.2F, 0.0F, 137.0F, 2.0F, 3.0F, 12.0F, 0.0F, 0.050F, 0.0F, 3.14F, 10.0F, 0.84F),
-        v2.toList(), eps = 1e-3))
+        v2.toList(),
+        listOf(100F, 0.2F, 0.0F, 137.0F, 2.0F, 3.0F, 12.0F, 0.0F, 0.181F, 0.0F, 3.14F, 10.0F, 0.84F),
+        eps = 1e-3))
 
     val qat = at - DataLoader.preFetch
-    verifyBlocking(input, atLeastOnce()) { getGlucoseReadings(qat, at + config.trainingPeriod) }
+    verifyBlocking(input, atLeastOnce()) {
+      getGlucoseReadings(qat- Duration.ofMinutes(10), at + config.trainingPeriod) }
     verifyBlocking(input, atLeastOnce()) { getHeartRates(qat, at + config.trainingPeriod) }
     verifyBlocking(input, atLeastOnce()) {
       getLongHeartRates(at + config.trainingPeriod, config.hrHighThreshold, config.hrLong) }
-    verifyBlocking(input, atLeastOnce()) { getBasalProfileSwitches(at, at + config.trainingPeriod) }
-    verifyBlocking(input, atLeastOnce()) { getTemporaryBasalRates(at, at + config.trainingPeriod) }
     verifyBlocking(input, atLeastOnce()) {
-      getCarbs(at - LogNormAction.maxAge, at + config.trainingPeriod) }
+      getBasalProfileSwitches(at - config.insulinAction.totalDuration, at + config.trainingPeriod) }
     verifyBlocking(input, atLeastOnce()) {
-      getBoluses(at - LogNormAction.maxAge, at + config.trainingPeriod) }
+      getTemporaryBasalRates(at - config.insulinAction.totalDuration, at + config.trainingPeriod) }
+    verifyBlocking(input, atLeastOnce()) {
+      getCarbs(at - config.carbAction.totalDuration, at + config.trainingPeriod) }
+    verifyBlocking(input, atLeastOnce()) {
+      getBoluses(at -  config.insulinAction.totalDuration, at + config.trainingPeriod) }
     verifyNoMoreInteractions(input)
   }
 

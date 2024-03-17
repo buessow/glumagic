@@ -29,6 +29,9 @@ java {
 
 dependencies {
     implementation(kotlin("reflect"))
+    implementation(libs.jdsp) {
+        exclude(group = "org.apache.maven.surefire", module = "common-java5")
+    }
     implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.apache.commons.csv)

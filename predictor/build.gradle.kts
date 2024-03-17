@@ -61,6 +61,8 @@ android {
     resources {
       excludes += "/META-INF/{AL2.0,LGPL2.1}"
       excludes += "META-INF/COPYRIGHT"
+      excludes += "META-INF/DEPENDENCIES"
+      excludes += "META-INF/INDEX.LIST"
       excludes += "META-INF/LICENSE.md"
       excludes += "META-INF/LICENSE-notice.md"
       excludes += "META-INF/native-image/org.mongodb/bson/native-image.properties"

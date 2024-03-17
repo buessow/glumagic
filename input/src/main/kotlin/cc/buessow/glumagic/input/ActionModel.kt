@@ -16,6 +16,8 @@ interface ActionModel {
     }
   }
 
+  val totalDuration: Duration
+
   fun getArgs(): Map<String, Any>
 
   fun valuesAt(values: List<DateValue>, start: Instant, times: Iterable<Instant>): List<Double>
