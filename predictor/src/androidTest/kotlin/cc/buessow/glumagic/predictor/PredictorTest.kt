@@ -13,6 +13,7 @@ class PredictorTest {
   fun loadAndVerifyModel() {
     val cl = this::class.java.classLoader!!
     Predictor.create(
+        { modelBytes -> TensorflowInterpreter(modelBytes) },
         cl.getResourceAsStream("glucose_model.json")!!,
         cl.getResourceAsStream("glucose_model.tflite")!!).use { p ->
       assertNotNull(p.config.zoneId)

@@ -25,6 +25,7 @@ class End2EndTest {
   private fun withPredictor(a: (Predictor) -> Unit) {
     val cl = this::class.java.classLoader!!
     Predictor.create(
+        { modelBytes -> TensorflowInterpreter(modelBytes) },
         cl.getResourceAsStream("glucose_model.json")!!,
         cl.getResourceAsStream("glucose_model.tflite")!!).use { p ->
       assertTrue(p.isValid)

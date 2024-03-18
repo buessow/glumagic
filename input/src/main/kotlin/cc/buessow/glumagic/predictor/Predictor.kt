@@ -3,7 +3,6 @@ package cc.buessow.glumagic.predictor
 import cc.buessow.glumagic.input.Config
 import cc.buessow.glumagic.input.DataLoader
 import cc.buessow.glumagic.input.InputProvider
-import org.tensorflow.lite.Interpreter
 import java.io.Closeable
 import java.io.File
 import java.io.IOException
@@ -15,9 +14,13 @@ import java.time.Instant
 import java.util.logging.Level
 import java.util.logging.Logger
 
+interface ModelInterpreter: Closeable {
+  fun run(input: Array<FloatArray>, output: Array<FloatArray>)
+}
+
 class Predictor private constructor(
     val config: Config,
-    private val interpreter: Interpreter) : Closeable {
+    private val interpreter: ModelInterpreter) : Closeable {
 
   companion object {
     private val log = Logger.getLogger(Predictor::javaClass.name)
@@ -25,6 +28,7 @@ class Predictor private constructor(
     private fun ByteArray.hex() = joinToString("") { "%02x".format(it) }
 
     fun create(
+        factory: (ByteBuffer) -> ModelInterpreter,
         modelMetaInput: InputStream,
         modelBytesInput: InputStream): Predictor {
 
@@ -40,11 +44,12 @@ class Predictor private constructor(
         put(modelBytes)
         rewind()
       }
-      return Predictor(config, Interpreter(modelByteBuf))
+      return Predictor(config, factory(modelByteBuf))
     }
 
     @Suppress("UNUSED")
     fun create(
+        factory: (File) -> ModelInterpreter,
         modelPath: File = File("/storage/emulated/0/Download"),
         modelName: String = "glucose_model"): Predictor? {
       val modelMetaFile = File(modelPath, "$modelName.json")
@@ -61,7 +66,7 @@ class Predictor private constructor(
       try {
         return Predictor(
             Config.fromJson(modelMetaFile),
-            Interpreter(modelBytesFile))
+            factory(modelBytesFile))
       } catch (e: IOException) {
         log.log(Level.SEVERE, "Failed to load model: $e", e)
       }
@@ -75,7 +80,7 @@ class Predictor private constructor(
     val cleanInput = inputData.map { f -> if (isNaN(f)) 0.0F else f }.toFloatArray()
     log.fine("input: ${cleanInput.joinToString { "%.2f".format(it) }}")
     val outputData = Array(1) { FloatArray(config.outputSize) }
-     interpreter.run(Array (1) { cleanInput }, outputData)
+    interpreter.run(Array (1) { cleanInput }, outputData)
     return outputData[0].map(Float::toDouble).toList()
   }
 

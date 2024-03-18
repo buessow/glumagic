@@ -9,7 +9,7 @@ kotlin {
 }
 
 group = "cc.buessow.glumagic"
-version = "unspecified"
+version = "1.0"
 
 dependencies {
     implementation(project(":input"))
