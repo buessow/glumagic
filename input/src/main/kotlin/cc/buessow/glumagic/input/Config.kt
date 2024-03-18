@@ -23,6 +23,8 @@ data class Config(
     val testData: List<TestData> = emptyList(),
     val e2eTests: List<TestData> = emptyList(),
     val zoneId: ZoneId,
+    val modelSha1: String? = null,
+    val creationDate: Instant? = null,
     val xValues: List<String> = emptyList(),
     val yValues: List<String> = emptyList(),
     val smoothingFilter: String? = null,

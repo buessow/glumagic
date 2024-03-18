@@ -10,6 +10,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.lang.Float.isNaN
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 import java.time.Instant
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -21,16 +22,25 @@ class Predictor private constructor(
   companion object {
     private val log = Logger.getLogger(Predictor::javaClass.name)
 
+    private fun ByteArray.hex() = joinToString("") { "%02x".format(it) }
+
     fun create(
         modelMetaInput: InputStream,
         modelBytesInput: InputStream): Predictor {
 
+      val config = Config.fromJson(modelMetaInput)
       val modelBytes = modelBytesInput.readBytes()
+      val sha1Hash = MessageDigest.getInstance("Sha-1").digest(modelBytes).hex()
+      if (config.modelSha1?.equals(sha1Hash, ignoreCase = true) == false) {
+        throw IllegalArgumentException("Invalid model checksum ${config.modelSha1} != $sha1Hash")
+      }
+      log.info("Loading model from ${config.creationDate}")
+
       val modelByteBuf = ByteBuffer.allocateDirect(modelBytes.size).apply {
         put(modelBytes)
         rewind()
       }
-      return Predictor(Config.fromJson(modelMetaInput), Interpreter(modelByteBuf))
+      return Predictor(config, Interpreter(modelByteBuf))
     }
 
     @Suppress("UNUSED")

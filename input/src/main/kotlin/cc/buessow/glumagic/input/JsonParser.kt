@@ -8,6 +8,7 @@ import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import java.io.*
 import java.time.*
+import java.time.ZoneOffset.UTC
 import java.time.format.DateTimeFormatter
 import java.util.zip.GZIPOutputStream
 
@@ -87,8 +88,9 @@ internal object JsonParser {
             else out.nullValue()
           }
 
-          override fun read(jr: JsonReader) =
-            LocalDateTime.parse(jr.nextString(), formatter).toInstant(ZoneOffset.UTC)
+          override fun read(jr: JsonReader) = jr.nextString().let {
+            if (it.last() == 'Z') Instant.parse(it) else LocalDateTime.parse(it, formatter).toInstant(UTC)
+          }
         })
     builder.registerTypeAdapter(
         Duration::class.java,

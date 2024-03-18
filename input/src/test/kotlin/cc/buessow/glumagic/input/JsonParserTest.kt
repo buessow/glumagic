@@ -3,6 +3,7 @@ package cc.buessow.glumagic.input
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
 
 class JsonParserTest {
@@ -16,6 +17,7 @@ class JsonParserTest {
         "hrLongDurationMinutes": [ 10 ],
         "hrHighThreshold": 140,
         "freqMinutes": 2,
+        "creationDate": "2024-03-18T10:10:10Z",
         "zoneId": "CET"
       }""")
     assertEquals(Duration.ofMinutes(1), config.trainingPeriod)
@@ -27,6 +29,7 @@ class JsonParserTest {
     assertEquals(listOf(Duration.ofMinutes(10)), config.hrLong)
     assertEquals(140, config.hrHighThreshold)
     assertEquals(Duration.ofMinutes(2), config.freq)
+    assertEquals(Instant.parse("2024-03-18T10:10:10Z"), config.creationDate)
     assertEquals(ZoneId.of("CET"), config.zoneId)
   }
 }
