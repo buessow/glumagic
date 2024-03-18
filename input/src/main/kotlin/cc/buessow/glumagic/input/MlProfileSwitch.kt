@@ -15,25 +15,37 @@ data class MlProfileSwitch(
   val isValid = basalRates.sumOf { (d, _) -> d.seconds } == 24 * 3600L
   val isPermanent = duration == null || duration == Duration.ZERO
 
-  fun toBasal(
-      from: Instant,
-      to: Instant,
-      zoneId: ZoneId) = sequence {
+  fun toBasal(from: Instant, to: Instant, zoneId: ZoneId) = sequence {
     if (!isValid) throw IllegalArgumentException("Invalid basal profile")
     if (to <= from) return@sequence
 
     var i = 0
     var t = from.atZone(zoneId).truncatedTo(ChronoUnit.DAYS).toInstant()
     while (t < to) {
-      val (d, amount) = basalRates[i]
+      var (d, amount) = basalRates[i]
       if (t > from) {
         yield(DateValue(t, amount * rate))
       } else if (t + d > from) {
         yield(DateValue(from, amount * rate))
       }
-      if (d == Duration.ZERO) break
-      t += d
-      i = (i + 1) % basalRates.size
+
+      // Daylight savings adjustments
+      val nextTrans = zoneId.rules.nextTransition(t)
+      if (nextTrans != null && t + d >= nextTrans.instant) {
+        t = nextTrans.instant
+        // Beginning of according to DST change.
+        var t0 = t.atZone(zoneId).truncatedTo(ChronoUnit.DAYS).toInstant() - nextTrans.duration
+        i = 0
+        while (true) {
+          t0 += basalRates[i].first
+          if (t0 > t) break
+          i = (i + 1) % basalRates.size
+        }
+
+      } else {
+        t += d
+        i = (i + 1) % basalRates.size
+      }
     }
   }
 }
