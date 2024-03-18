@@ -22,7 +22,7 @@ data class MlProfileSwitch(
     var i = 0
     var t = from.atZone(zoneId).truncatedTo(ChronoUnit.DAYS).toInstant()
     while (t < to) {
-      var (d, amount) = basalRates[i]
+      val (d, amount) = basalRates[i]
       if (t > from) {
         yield(DateValue(t, amount * rate))
       } else if (t + d > from) {

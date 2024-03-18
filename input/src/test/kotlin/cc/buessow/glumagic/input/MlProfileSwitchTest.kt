@@ -14,14 +14,14 @@ class MlProfileSwitchTest {
 
   private fun profileToBasalRates(
       start: String, zoneId: ZoneId, vararg basals: Pair<Int, Double>): List<DateValue> {
-    val start = LocalDateTime.parse(start).atZone(zoneId).toInstant()
+    val from = LocalDateTime.parse(start).atZone(zoneId).toInstant()
     val bs = basals.map { (m, amount) -> Duration.ofMinutes(m.toLong()) to amount }.toList()
     val coveredDuration = Duration.ofMinutes(basals.sumOf { (m, _) -> m }.toLong())
     val ps = MlProfileSwitch(
         "test",
-        start,
+        from,
         bs + listOf(Duration.ofDays(1) - coveredDuration to 0.0))
-    return ps.toBasal(start, start + Duration.ofHours(4), zoneId).toList()
+    return ps.toBasal(from, from + Duration.ofHours(4), zoneId).toList()
   }
 
   private fun dv(date: String, zoneId: ZoneId, amount: Double) = DateValue(
@@ -171,6 +171,19 @@ class MlProfileSwitchTest {
         dv("2024-03-31T01:30", CET, 1.2),
         dv("2024-03-31T03:00", CET, 1.4),
         dv("2024-03-31T04:30", CET, 1.5))
+  }
+
+  @Test
+  fun profileToBasal_dstWinterSummer5() {
+    val basalRates = profileToBasalRates(
+        "2024-03-31T01:00", CET,
+        90 to 1.1, 120 to 1.2, 60 to 1.3)
+    assertCollectionEquals(
+        basalRates,
+        dv("2024-03-31T01:00", CET, 1.1),
+        dv("2024-03-31T01:30", CET, 1.2),
+        dv("2024-03-31T03:00", CET, 1.2),
+        dv("2024-03-31T05:00", CET, 1.3))
   }
 
   @Test
