@@ -129,7 +129,8 @@ class End2EndTest {
                  146.067, 151.508, 157.611, 171.670, 177.458, 177.033),
              eps = 1e-2))
 
-      val (lastGlucose, inputVector) = DataLoader.getInputVector(input, time, p.config)
+      val (lastGlucose, inputVector) = DataLoader.getInputVector(
+          input, time+p.config.trainingPeriod, p.config)
       ArrayApproxCompare.approxEquals(80.314F, lastGlucose, 1e-2)
 
       assertEquals(12, localTime.hour)
@@ -212,8 +213,8 @@ class End2EndTest {
       assertNull(ArrayApproxCompare.getMismatch(
           glucosePredictions,
           listOf(
-              79.163, 79.104, 80.600, 82.774, 85.249, 89.076,
-              92.428, 96.995, 98.875, 101.673, 103.071, 104.214),
+              116.807, 111.824, 107.705, 104.789, 103.044, 102.052,
+              102.342, 102.316, 103.995, 105.324, 107.659, 109.208),
           eps = 1e-2))
     }
   }

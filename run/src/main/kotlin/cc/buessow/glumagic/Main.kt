@@ -106,7 +106,7 @@ object Main {
     val trainingData = DataLoader.getTrainingData(input, from, config1)
     println("Loaded ${trainingData.date.size} values")
     if (outFile == null) {
-      trainingData.writeCsv(OutputStreamWriter(System.out), start = Instant.parse("2023-10-01T10:00:00Z"), head = 1)
+      trainingData.writeCsv(OutputStreamWriter(System.out), head = 100)
     } else if (outFile.extension == "csv") {
       outFile.outputStream().use { trainingData.writeCsv(OutputStreamWriter(it)) }
     } else if (outFile.extension == "json") {

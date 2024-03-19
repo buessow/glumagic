@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.io.StringWriter
 import java.lang.AssertionError
+import java.time.Duration
 import java.time.Instant
 
 class TrainingInputTest {
@@ -94,4 +95,46 @@ class TrainingInputTest {
         ti)
   }
 
+  @Test
+  fun removePeriod() {
+    val n = 10
+    val freq = Duration.ofMinutes(1)
+    val s = Instant.now()
+    val ti = TrainingInput(
+        (s ..< s + freq.multipliedBy(n.toLong()) step freq).toList(),
+        (0..< n).toList(),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble),
+        (0..< n).toList().map(Int::toDouble))
+
+    val ti1 = ti.removePeriod(s + freq, freq.multipliedBy(2))
+    assertEquals(listOf(0, 3, 4, 5, 6, 7, 8, 9), ti1.hour)
+
+    val ti2 = ti.removePeriod(s, freq.multipliedBy(2))
+    assertEquals(listOf(2, 3, 4, 5, 6, 7, 8, 9), ti2.hour)
+
+    val ti5 = ti.removePeriod(s - freq, freq.multipliedBy(2))
+    assertEquals(listOf(1, 2, 3, 4, 5, 6, 7, 8, 9), ti5.hour)
+
+    val ti3 = ti.removePeriod(s + freq.multipliedBy(n-2L), freq.multipliedBy(2))
+    assertEquals(listOf(0, 1, 2, 3, 4, 5, 6, 7), ti3.hour)
+
+    val ti4 = ti.removePeriod(
+        s + freq.multipliedBy(n-2L),
+        freq.multipliedBy(3))
+    assertEquals(listOf(0, 1, 2, 3, 4, 5, 6, 7), ti4.hour)
+
+    val ti6 = ti.removePeriod(
+        s + Duration.ofSeconds(30),
+        freq.multipliedBy(3))
+    assertEquals(listOf(0, 5, 6, 7, 8, 9), ti6.hour)
+  }
 }

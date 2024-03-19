@@ -577,7 +577,7 @@ class DataLoaderTest {
 
   @Test
   fun getTrainingData() {
-    val at = Instant.parse("2013-12-13T00:00:00Z")
+    val trainingFrom = Instant.parse("2013-12-13T00:00:00Z")
     val config = Config(
         trainingPeriod = ofMinutes(30),
         predictionPeriod = Duration.ZERO,
@@ -586,13 +586,13 @@ class DataLoaderTest {
         hrHighThreshold = 120,
         hrLong = listOf(Duration.ofHours(1), Duration.ofHours(2)),
         zoneId = ZoneId.of("CET"))
-    val dates = (at..<(at + config.trainingPeriod) step config.freq).toList()
+    val dates = (trainingFrom..<(trainingFrom + config.trainingPeriod) step config.freq).toList()
 
     val input: InputProvider = mock {
       onBlocking { getGlucoseReadings(any(), anyOrNull()) }.thenReturn(
           dates.mapIndexed { i, d -> DateValue(d, 100.0 + i) })
       onBlocking { getHeartRates(any(), anyOrNull()) }.thenReturn(
-          (at - Duration.ofHours(2) ..< at + config.trainingPeriod step config.freq)
+          (trainingFrom - Duration.ofHours(2) ..< trainingFrom + config.trainingPeriod step config.freq)
               .asIterable()
               .mapIndexed { i, d -> DateValue(d, 110.0 + i) })
       onBlocking { getCarbs(any(), anyOrNull()) }.thenReturn(listOf(
@@ -602,7 +602,7 @@ class DataLoaderTest {
       onBlocking { getBasalProfileSwitches(any(), anyOrNull()) }.thenReturn(null)
     }
 
-    val td = DataLoader.getTrainingData(input, at, config)
+    val td = DataLoader.getTrainingData(input, trainingFrom, config)
     val expected = TrainingInput(
         date = dates,
         hour = List(6) { 1 },
@@ -621,29 +621,30 @@ class DataLoaderTest {
         insulinAction = List(6) { 0.0 })
     assertEquals(expected, td)
 
-    val qat = at - DataLoader.preFetch
+    val qat = trainingFrom - DataLoader.preFetch
     verifyBlocking(input) {
-      getGlucoseReadings(qat - ofMinutes(10), at + config.trainingPeriod) }
+      getGlucoseReadings(qat - ofMinutes(10), trainingFrom + config.trainingPeriod) }
     verifyBlocking(input) {
-      getHeartRates(at - config.hrLong.max(), at + config.trainingPeriod) }
+      getHeartRates(trainingFrom - config.hrLong.max(), trainingFrom + config.trainingPeriod) }
     verifyBlocking(input) { getBasalProfileSwitches(
-        at - config.insulinAction.totalDuration, at + config.trainingPeriod) }
+        trainingFrom - config.insulinAction.totalDuration, trainingFrom + config.trainingPeriod) }
     verifyBlocking(input) {
-      getCarbs(at - config.carbAction.totalDuration, at + config.trainingPeriod) }
+      getCarbs(trainingFrom - config.carbAction.totalDuration, trainingFrom + config.trainingPeriod) }
     verifyBlocking(input) {
-      getBoluses(at - config.insulinAction.totalDuration, at + config.trainingPeriod) }
+      getBoluses(trainingFrom - config.insulinAction.totalDuration, trainingFrom + config.trainingPeriod) }
   }
 
   @Test
   fun getInputVector() {
-    val at = Instant.parse("2013-12-13T00:00:00Z")
-    val dates = (at..<(at + config.trainingPeriod) step config.freq).toList()
+    val trainFrom = Instant.parse("2013-12-13T00:00:00Z")
+    val trainUpto = trainFrom + config.trainingPeriod
+    val dates = (trainFrom..<trainUpto step config.freq).toList()
 
     val input: InputProvider = mock {
       onBlocking { getGlucoseReadings(any(), anyOrNull()) }.thenReturn(
           dates.mapIndexed { i, d -> DateValue(d, 100.0 + i) })
       onBlocking { getHeartRates(any(), anyOrNull()) }.thenReturn(
-          (at - Duration.ofHours(2) ..< at + config.trainingPeriod step config.freq)
+          (trainFrom - Duration.ofHours(2) ..<trainUpto step config.freq)
               .asIterable()
               .mapIndexed { i, d -> DateValue(d, 110.0 + i) })
       onBlocking { getLongHeartRates(any(), any(), any()) }.thenReturn(listOf(2, 3))
@@ -656,7 +657,7 @@ class DataLoaderTest {
     }
 
     val c1 = config.copy(predictionPeriod = Duration.ZERO, xValues = listOf( "gl_00", "gl_05"))
-    val (last1, v1) = DataLoader.getInputVector(input, at, c1)
+    val (last1, v1) = DataLoader.getInputVector(input, trainUpto, c1)
     assertEquals(105.0, last1)
     assertNull(ArrayApproxCompare.getMismatch(v1.toList(), listOf(100F, 101F), eps = 1e-4))
 
@@ -668,27 +669,27 @@ class DataLoaderTest {
             "ins_10", "ins_25", "ia_25",
             "0", "3.14",
             "carbs_05", "ca_20"))
-    val (last2, v2) = DataLoader.getInputVector(input, at, c2)
+    val (last2, v2) = DataLoader.getInputVector(input, trainUpto, c2)
     assertEquals(105.0, last2)
     assertNull(ArrayApproxCompare.getMismatch(
         v2.toList(),
         listOf(100F, 0.2F, 0.0F, 137.0F, 2.0F, 3.0F, 12.0F, 0.0F, 0.181F, 0.0F, 3.14F, 10.0F, 0.84F),
         eps = 1e-3))
 
-    val qat = at - DataLoader.preFetch
+    val qat = trainFrom - DataLoader.preFetch
     verifyBlocking(input, atLeastOnce()) {
-      getGlucoseReadings(qat- Duration.ofMinutes(10), at + config.trainingPeriod) }
-    verifyBlocking(input, atLeastOnce()) { getHeartRates(qat, at + config.trainingPeriod) }
+      getGlucoseReadings(qat- Duration.ofMinutes(10), trainUpto) }
+    verifyBlocking(input, atLeastOnce()) { getHeartRates(qat, trainUpto) }
     verifyBlocking(input, atLeastOnce()) {
-      getLongHeartRates(at + config.trainingPeriod, config.hrHighThreshold, config.hrLong) }
+      getLongHeartRates(trainUpto, config.hrHighThreshold, config.hrLong) }
     verifyBlocking(input, atLeastOnce()) {
-      getBasalProfileSwitches(at - config.insulinAction.totalDuration, at + config.trainingPeriod) }
+      getBasalProfileSwitches(trainFrom - config.insulinAction.totalDuration, trainUpto) }
     verifyBlocking(input, atLeastOnce()) {
-      getTemporaryBasalRates(at - config.insulinAction.totalDuration, at + config.trainingPeriod) }
+      getTemporaryBasalRates(trainFrom - config.insulinAction.totalDuration, trainUpto) }
     verifyBlocking(input, atLeastOnce()) {
-      getCarbs(at - config.carbAction.totalDuration, at + config.trainingPeriod) }
+      getCarbs(trainFrom - config.carbAction.totalDuration, trainUpto) }
     verifyBlocking(input, atLeastOnce()) {
-      getBoluses(at -  config.insulinAction.totalDuration, at + config.trainingPeriod) }
+      getBoluses(trainFrom -  config.insulinAction.totalDuration, trainUpto) }
     verifyNoMoreInteractions(input)
   }
 

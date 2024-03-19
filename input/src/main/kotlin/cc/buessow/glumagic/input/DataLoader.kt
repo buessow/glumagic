@@ -9,17 +9,18 @@ import kotlin.math.round
 
 class DataLoader(
     private val inputProvider: InputProvider,
-    time: Instant,
+    trainingFrom: Instant,
     private val config: Config) {
 
-  private val inputFrom: Instant = time.truncatedTo(ChronoUnit.MINUTES)
-  private val inputAt = inputFrom + config.trainingPeriod
-  private val inputUpTo = inputAt + config.predictionPeriod
-  private val intervals = inputFrom ..< inputUpTo step config.freq
+  private val trainingFrom: Instant = trainingFrom.truncatedTo(ChronoUnit.MINUTES)
+  private val trainingUpto = this.trainingFrom + config.trainingPeriod
+  private val predictUpto = trainingUpto + config.predictionPeriod
+  private val intervals = this.trainingFrom..< predictUpto step config.freq
   private val carbAction = config.carbAction
   private val insulinAction = config.insulinAction
   private val smoothingFilter = SmoothingFilter(
       config.smoothingFilter ?: "none", config.smoothingParams ?: emptyMap())
+  private val insulinEvents = mutableSetOf<Instant>()
 
   companion object {
 
@@ -51,8 +52,8 @@ class DataLoader(
       assertZero(values.count { !it.isNaN() && it > max}, "$name > $max")
     }
 
-    fun getInputVector(input: InputProvider, time: Instant, config: Config) = runBlocking {
-      DataLoader(input, time, config).getInputVector()
+    fun getInputVector(input: InputProvider, at: Instant, config: Config) = runBlocking {
+      DataLoader(input, at - config.trainingPeriod, config).getInputVector()
     }
 
     fun getTrainingData(input: InputProvider, time:Instant, config: Config) = runBlocking {
@@ -87,7 +88,11 @@ class DataLoader(
         "total insulin $totalInsulin, total action $totalIAction"
       }
 
-      TrainingInput(date = dl.intervals.toList(),
+      val missingPeriods = dl.missingPeriods(Duration.ofDays(1))
+      println("insulin events ${dl.insulinEvents.toList().sorted().take(1000).joinToString()}")
+      println("missing periods: " + missingPeriods.joinToString{ (ts, d) -> "$ts..${ts+d}"})
+
+      var ti = TrainingInput(date = dl.intervals.toList(),
                     hour = hours,
                     glucose = gl.drop(2),
                     glucoseSlope1 = glSlope1.drop(1), glucoseSlope2 = glSlope2,
@@ -99,6 +104,8 @@ class DataLoader(
                     bolus = insulin.bolus,
                     basal = insulin.basal,
                     insulinAction = insulin.action)
+      for ((ts, d) in missingPeriods) ti = ti.removePeriod(ts, d)
+      ti
     }
 
     @VisibleForTesting
@@ -205,14 +212,26 @@ class DataLoader(
     }
   }
 
+  fun missingPeriods(duration: Duration): MutableList<Pair<Instant, Duration>> {
+    val periods = mutableListOf<Pair<Instant, Duration>>()
+    var ts0 = trainingFrom
+    for (ts1 in insulinEvents.toList().sorted()) {
+      if (ts1 < ts0) continue
+      Duration.between(ts0, ts1).also { if (it > duration) periods.add(ts0 to it) }
+      ts0 = ts1
+    }
+    Duration.between(ts0, predictUpto).also { if (it > duration) periods.add(ts0 to it) }
+    return periods
+  }
+
   private fun alignEvents(events: Iterable<DateValue>) = sequence {
     val halfFreq = config.freq.dividedBy(2L)
     val iter = events.iterator()
 
     var event = iter.nextOrNull()
-    while (event != null && event.timestamp < inputFrom - halfFreq) event = iter.nextOrNull()
+    while (event != null && event.timestamp < trainingFrom - halfFreq) event = iter.nextOrNull()
 
-    for (t in inputFrom ..< inputUpTo step config.freq) {
+    for (t in trainingFrom ..< predictUpto step config.freq) {
       var value = 0.0
       while (event != null && event.timestamp < t + halfFreq) {
         value += event.value
@@ -223,17 +242,17 @@ class DataLoader(
   }.toList()
 
   suspend fun loadGlucoseReadings(): List<Double> {
-    val loadFrom: Instant = inputFrom - config.freq - config.freq
-    val glucoseReadings = inputProvider.getGlucoseReadings(loadFrom - preFetch, inputAt)
-    val aligned = align(loadFrom, glucoseReadings, inputAt, config.freq).toList()
+    val loadFrom: Instant = trainingFrom - config.freq - config.freq
+    val glucoseReadings = inputProvider.getGlucoseReadings(loadFrom - preFetch, trainingUpto)
+    val aligned = align(loadFrom, glucoseReadings, trainingUpto, config.freq).toList()
     val smooth = smoothingFilter.filter(aligned)
     return smooth
   }
 
   suspend fun loadHeartRates(): List<Double> {
-    val loadFrom: Instant = inputFrom - preFetch
-    return inputProvider.getHeartRates(loadFrom, inputUpTo).let { hrs ->
-      align(inputFrom, hrs, inputUpTo, config.freq).map { hr -> if (hr.isNaN()) 60.0 else hr }
+    val loadFrom: Instant = trainingFrom - preFetch
+    return inputProvider.getHeartRates(loadFrom, predictUpto).let { hrs ->
+      align(trainingFrom, hrs, predictUpto, config.freq).map { hr -> if (hr.isNaN()) 60.0 else hr }
     }.toList()
   }
 
@@ -257,8 +276,8 @@ class DataLoader(
 
   suspend fun loadHeartRatesWithLong(): List<List<Double>> {
     val maxPeriod = config.hrLong.maxOrNull() ?: Duration.ZERO
-    val hrs = inputProvider.getHeartRates(inputFrom - maxPeriod, inputUpTo)
-    val result = mutableListOf(align(inputFrom, hrs, inputUpTo, config.freq).toList())
+    val hrs = inputProvider.getHeartRates(trainingFrom - maxPeriod, predictUpto)
+    val result = mutableListOf(align(trainingFrom, hrs, predictUpto, config.freq).toList())
     for (th in config.hrLong) {
       val hrLong = mutableListOf<Double>()
 
@@ -272,12 +291,12 @@ class DataLoader(
         val n = subList(hrs, periodEndIdx, ts)
         periodEndIdx += n.size
         highMillis += millisTrue(
-            n, hrs.elementAtOrNull(periodEndIdx)?.timestamp ?: inputUpTo, ::highHeartRate)
+            n, hrs.elementAtOrNull(periodEndIdx)?.timestamp ?: predictUpto, ::highHeartRate)
 
         val p = subList(hrs, periodStartIdx, ts - th)
         periodStartIdx += p.size
         highMillis -= millisTrue(
-            p, hrs.elementAtOrNull(periodStartIdx)?.timestamp ?: inputUpTo, ::highHeartRate)
+            p, hrs.elementAtOrNull(periodStartIdx)?.timestamp ?: predictUpto, ::highHeartRate)
 
         hrLong.add(round(highMillis.toDouble() / config.freq.toMillis()))
       }
@@ -292,14 +311,14 @@ class DataLoader(
 
   suspend fun loadLongHeartRates(): List<Double> {
     return inputProvider
-        .getLongHeartRates(inputAt, config.hrHighThreshold, config.hrLong)
+        .getLongHeartRates(trainingUpto, config.hrHighThreshold, config.hrLong)
         .map(Int::toDouble).toList()
   }
 
   suspend fun loadCarbEventsAndAction(): Pair<List<Double>, List<Double>> {
-    val carbs = inputProvider.getCarbs(inputFrom - carbAction.totalDuration, inputUpTo)
+    val carbs = inputProvider.getCarbs(trainingFrom - carbAction.totalDuration, predictUpto)
     return Pair(
-        alignEvents(carbs), carbAction.valuesAt(carbs, inputFrom - config.freq, intervals))
+        alignEvents(carbs), carbAction.valuesAt(carbs, trainingFrom - config.freq, intervals))
   }
 
   /** Adjusts basal rates to insulin injection in [Config.freq] frequency. Note
@@ -315,7 +334,7 @@ class DataLoader(
     var restTs = Duration.ZERO
     var restInsulin = 0.0
     for (i in basals.indices) {
-      val nextStart = basals.elementAtOrNull(i + 1)?.timestamp ?: inputUpTo
+      val nextStart = basals.elementAtOrNull(i + 1)?.timestamp ?: predictUpto
       val basalRate = basals[i].value
       while (ts + config.freq <= nextStart) {
         result.add(
@@ -337,17 +356,23 @@ class DataLoader(
   }
 
   suspend fun loadBasalRates(): List<DateValue> = coroutineScope {
-    val default = listOf(DateValue(inputFrom, 0.0))
-    val from = inputFrom-insulinAction.totalDuration
+    val default = listOf(DateValue(trainingFrom, 0.0))
+    val from = trainingFrom-insulinAction.totalDuration
     val (basals, tempBasals) = await2(
         async {
-          inputProvider.getBasalProfileSwitches(from, inputUpTo)
-              ?.toBasal(from, inputUpTo, config.zoneId)
-              ?.toList()
-              ?.sorted()
-              ?.takeUnless(List<DateValue>::isEmpty) ?: default },
-        async { inputProvider.getTemporaryBasalRates(from, inputUpTo) })
-    return@coroutineScope adjustRates(applyTemporaryBasals(basals, tempBasals, inputUpTo))
+          val psws = inputProvider.getBasalProfileSwitches(from, predictUpto) ?: return@async default
+          synchronized (insulinEvents) {
+            insulinEvents.addAll(psws.switches.map(MlProfileSwitch::start))
+          }
+          psws.toBasal(from, predictUpto, config.zoneId)
+              .toList()
+              .sorted()
+              .takeUnless(List<DateValue>::isEmpty) ?: default },
+        async { inputProvider.getTemporaryBasalRates(from, predictUpto) })
+    synchronized (insulinEvents) {
+      insulinEvents.addAll(tempBasals.map(MlTemporaryBasalRate::timestamp))
+    }
+    return@coroutineScope adjustRates(applyTemporaryBasals(basals, tempBasals, predictUpto))
   }
 
   data class InsulinEvents(
@@ -357,10 +382,13 @@ class DataLoader(
 
   suspend fun loadInsulinEventsAndAction(): InsulinEvents = coroutineScope {
     val (bolus, basal) = awaitAll(
-        async { inputProvider.getBoluses(inputFrom - insulinAction.totalDuration, inputUpTo) },
+        async { inputProvider.getBoluses(trainingFrom - insulinAction.totalDuration, predictUpto) },
         async { loadBasalRates() })
-    val bolusAction = insulinAction.valuesAt(bolus, inputFrom - config.freq, intervals)
-    val basalAction = insulinAction.valuesAt(basal, inputFrom - config.freq, intervals)
+    synchronized (insulinEvents) {
+      insulinEvents.addAll(bolus.map(DateValue::timestamp))
+    }
+    val bolusAction = insulinAction.valuesAt(bolus, trainingFrom - config.freq, intervals)
+    val basalAction = insulinAction.valuesAt(basal, trainingFrom - config.freq, intervals)
 
     InsulinEvents(
         bolus = alignEvents(bolus),
@@ -392,7 +420,7 @@ class DataLoader(
     val glSlope = slope(gl)
     val glSlop2 = slope(glSlope)
 
-    val localTime = OffsetDateTime.ofInstant(inputFrom, config.zoneId)
+    val localTime = OffsetDateTime.ofInstant(trainingFrom, config.zoneId)
     val input = mutableListOf<Double>()
     val getIndex = { minute: String -> minute.toInt() / config.freq.toMinutes().toInt() }
     for (n in config.xValues) {

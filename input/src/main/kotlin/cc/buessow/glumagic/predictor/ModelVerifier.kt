@@ -11,7 +11,8 @@ class ModelVerifier(private val predictor: Predictor) {
 
   private fun runInput(testData: Config.TestData): Boolean {
     log.info("input ${testData.name}")
-    val dataProvider = InputProviderForTestInput(testData)
+    val dataProvider = InputProviderForTestInput(
+        testData.at - predictor.config.trainingPeriod, testData)
     val mismatch = ArrayApproxCompare.getMismatch(
         DataLoader.getInputVector(dataProvider, testData.at, predictor.config).second.toList(),
         testData.inputVector.toList(), 1e-3
@@ -23,7 +24,8 @@ class ModelVerifier(private val predictor: Predictor) {
 
   private fun runGlucose(testData: Config.TestData): Boolean {
     log.info("glucose ${testData.name}")
-    val inputProvider = InputProviderForTestInput(testData)
+    val inputProvider = InputProviderForTestInput(
+        testData.at - predictor.config.trainingPeriod, testData)
     val glucose = predictor.predictGlucose(testData.at, inputProvider)
     val mismatch = ArrayApproxCompare.getMismatch(
         glucose.map(Double::toFloat),

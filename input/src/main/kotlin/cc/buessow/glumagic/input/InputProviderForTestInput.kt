@@ -3,11 +3,11 @@ package cc.buessow.glumagic.input
 import java.time.Duration
 import java.time.Instant
 
-class InputProviderForTestInput(private val testData: Config.TestData) : InputProvider {
+class InputProviderForTestInput(private val from: Instant, private val testData: Config.TestData) : InputProvider {
   private val input = testData.inputData
 
   private fun toDateValue(m: Int, v: Double) =
-    DateValue(testData.at + Duration.ofMinutes(m.toLong()), v)
+    DateValue(from + Duration.ofMinutes(m.toLong()), v)
 
   override suspend fun getGlucoseReadings(from: Instant, upto: Instant?) =
       input.minute.zip(input.glucose).map { (m, v) -> toDateValue(m, v) }

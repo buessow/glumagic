@@ -3,7 +3,9 @@ package cc.buessow.glumagic.input
 import org.apache.commons.csv.CSVFormat
 import java.io.File
 import java.io.Writer
+import java.time.Duration
 import java.time.Instant
+import kotlin.math.absoluteValue
 import kotlin.reflect.KProperty
 import kotlin.reflect.KVisibility
 import kotlin.reflect.full.primaryConstructor
@@ -42,8 +44,8 @@ data class TrainingInput(
   init {
     // Make sure that all properties have the same length.
     properties.forEach { p ->
-      val size = (p.call(this) as List<*>).size
-      assert(date.size == size) { "size mismatch for ${p.name}: ${date.size} != $size" } }
+      val s = (p.call(this) as List<*>).size
+      assert(date.size == s) { "size mismatch for ${p.name}: ${date.size} != $s" } }
   }
 
   override fun toString() =
@@ -57,6 +59,13 @@ data class TrainingInput(
   }
 
   private fun values(): List<List<Any>> = properties.map { p -> p.call(this) }
+
+  fun removePeriod(ts: Instant, d: Duration): TrainingInput {
+    val start = date.binarySearch(ts).let { if (it < 0) -(it+1) else it }
+    val end = date.binarySearch(ts+d).absoluteValue
+    val newValues = values().map { vs -> vs.take(start) + vs.drop(end) }
+    return TrainingInput::class.primaryConstructor!!.call(*newValues.toTypedArray())
+  }
 
   private fun records() = sequence {
     val values = values()
