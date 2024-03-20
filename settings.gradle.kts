@@ -11,6 +11,7 @@ pluginManagement {
         id("kotlin-android") version "8.2.0"
         id("com.android.library") version "8.2.0" apply false
         id("com.adarshr.test-logger") version  "4.0.0"
+        id("com.gradleup.nmcp") version "0.0.4" apply false
     }
     resolutionStrategy {
         eachPlugin {
