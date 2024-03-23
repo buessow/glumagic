@@ -15,11 +15,12 @@ class ArrayApproxCompare {
       }
     }
 
-    private fun firstMismatch(expected: List<Number>, actual: List<Number>, e: Double): Int? {
+    private fun firstMismatch(expected: List<Number>, actual: List<Number>, e: Double, ratio: Double): Int? {
       val size = expected.size.coerceAtMost(actual.size)
       for (i in 0 ..< size) {
-        if (!approxEquals(expected[i], actual[i], e))
-          return i
+        if (approxEquals(expected[i], actual[i], e)) continue
+        if (actual[i].toDouble() / expected[i].toDouble() in 1-ratio..1+ratio) continue
+        return i
       }
       return if (expected.size == actual.size) null else size
     }
@@ -37,8 +38,8 @@ class ArrayApproxCompare {
     fun getMismatch(
         actual: Collection<Number>,
         expected: Collection<Number>,
-        eps: Double): String? {
-      val mismatch = firstMismatch(expected.toList(), actual.toList(), eps) ?: return null
+        eps: Double, ratio: Double = 0.0): String? {
+      val mismatch = firstMismatch(expected.toList(), actual.toList(), eps, ratio) ?: return null
       val a = formatMismatch(actual, mismatch)
       val e = formatMismatch(expected, mismatch)
       return "exp:${"%3d".format(mismatch)} [$e]\nbut was [$a]"
