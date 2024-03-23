@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "cc.outabout.glumagic"
-version = "1.0.1"
+version = "1.0.2"
 
 val localProperties = Properties()
 File(rootProject.projectDir, "local.properties").inputStream().use { localProperties.load(it) }
