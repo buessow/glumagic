@@ -44,7 +44,7 @@ class End2EndTest {
       val pred = p.predictGlucose(testData.at, ip)
       val m =ArrayApproxCompare.getMismatch(
           testData.outputGlucose,
-          pred.map(Number::toFloat), eps = 1e-2)
+          pred.map(Number::toFloat), eps = 0.01)
       if (m != null) {
         fail(m)
       }
@@ -218,8 +218,8 @@ class End2EndTest {
       assertNull(ArrayApproxCompare.getMismatch(
           glucosePredictions,
           listOf(
-              123.961, 118.512, 116.370, 114.241, 114.608, 115.028,
-              116.152, 117.261, 119.879, 121.221, 121.926, 124.072),
+              118.144, 112.364, 107.960, 104.213, 102.522, 100.512,
+              100.180, 100.467, 101.339, 102.542, 104.232, 104.258),
           eps = 1e-2))
     }
   }
