@@ -2,26 +2,22 @@
 <project version="4">
   <component name="deploymentTargetDropDown">
     <value>
-      <entry key="All Tests">
-        <State>
-          <targetSelectedWithDropDown>
-            <Target>
-              <type value="QUICK_BOOT_TARGET" />
-              <deviceKey>
-                <Key>
-                  <type value="VIRTUAL_DEVICE_PATH" />
-                  <value value="$USER_HOME$/.android/avd/Pixel_4_API_33.avd" />
-                </Key>
-              </deviceKey>
-            </Target>
-          </targetSelectedWithDropDown>
-          <timeTargetWasSelectedWithDropDown value="2024-03-18T17:33:43.298597Z" />
-        </State>
+      <entry key="End2EndTest">
+        <State />
+      </entry>
+      <entry key="PredictorTest">
+        <State />
       </entry>
       <entry key="Tests in 'cc.buessow.glumagic.predictor'">
         <State />
       </entry>
+      <entry key="loadAndVerifyModel()">
+        <State />
+      </entry>
       <entry key="predictor">
+        <State />
+      </entry>
+      <entry key="testDataE2E()">
         <State />
       </entry>
     </value>

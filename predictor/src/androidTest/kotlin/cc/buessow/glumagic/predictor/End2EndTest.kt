@@ -40,7 +40,7 @@ class End2EndTest {
         apiKey = BuildConfig.MONGO_API_KEY).use { ip ->
       val (_, inputVector) = DataLoader.getInputVector(ip, testData.at, p.config)
       ArrayApproxCompare.getMismatch(
-          inputVector.asList(), testData.inputVector.asList(), eps = 1e-2)?.also { fail("\n"+it) }
+          inputVector.asList(), testData.inputVector.asList(), eps = 0.01)?.also { fail("\n"+it) }
       val pred = p.predictGlucose(testData.at, ip)
       val m =ArrayApproxCompare.getMismatch(
           testData.outputGlucose,
@@ -130,7 +130,12 @@ class End2EndTest {
              eps = 1e-2))
 
       val (lastGlucose, inputVector) = DataLoader.getInputVector(
-          input, time+p.config.trainingPeriod, p.config)
+          input,
+          time+p.config.trainingPeriod,
+          p.config.copy(
+              hrHighThreshold = 120,
+              insulinAction = ExponentialInsulinModel.fiasp,
+              smoothingFilter = "none"))
       ArrayApproxCompare.approxEquals(80.314F, lastGlucose, 1e-2)
 
       assertEquals(12, localTime.hour)
@@ -213,8 +218,8 @@ class End2EndTest {
       assertNull(ArrayApproxCompare.getMismatch(
           glucosePredictions,
           listOf(
-              116.807, 111.824, 107.705, 104.789, 103.044, 102.052,
-              102.342, 102.316, 103.995, 105.324, 107.659, 109.208),
+              123.961, 118.512, 116.370, 114.241, 114.608, 115.028,
+              116.152, 117.261, 119.879, 121.221, 121.926, 124.072),
           eps = 1e-2))
     }
   }

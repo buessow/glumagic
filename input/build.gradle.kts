@@ -94,6 +94,7 @@ dependencies {
     implementation(kotlin("reflect"))
     implementation(libs.apache.commons.csv)
     implementation(libs.jdsp) {
+        isTransitive = true
         exclude(group = "org.apache.maven.surefire", module = "common-java5")
     }
     implementation(libs.gson)

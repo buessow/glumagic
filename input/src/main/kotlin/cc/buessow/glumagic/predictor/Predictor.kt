@@ -89,9 +89,9 @@ class Predictor private constructor(
     return slopes.map { s -> (5 * s + p).also { p = it } }
   }
 
-  fun predictGlucose(at: Instant, dp: InputProvider): List<Double> {
+  fun predictGlucose(at: Instant, dp: InputProvider, configOverride: Config = config): List<Double> {
     log.info("Predicting glucose at $at")
-    val (lastGlucose, input) = DataLoader.getInputVector(dp, at, config)
+    val (lastGlucose, input) = DataLoader.getInputVector(dp, at, configOverride)
     val p = predict(input)
     val glucose = if (config.yValues[0].startsWith("gls_")) {
       computeGlucose(lastGlucose, p)

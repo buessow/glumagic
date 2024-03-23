@@ -243,9 +243,10 @@ class DataLoader(
 
   suspend fun loadGlucoseReadings(): List<Double> {
     val loadFrom: Instant = trainingFrom - config.freq - config.freq
-    val glucoseReadings = inputProvider.getGlucoseReadings(loadFrom - preFetch, trainingUpto)
-    val aligned = align(loadFrom, glucoseReadings, trainingUpto, config.freq).toList()
-    val smooth = smoothingFilter.filter(aligned)
+    val glucoseReadings = inputProvider.getGlucoseReadings(
+        loadFrom - preFetch- config.freq, trainingUpto)
+    val aligned = align(loadFrom - config.freq, glucoseReadings, trainingUpto, config.freq).toList()
+    val smooth = smoothingFilter.filter(aligned).drop(1)
     return smooth
   }
 

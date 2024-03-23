@@ -98,7 +98,7 @@ class DataLoaderTest {
     val values = dataLoader.loadGlucoseReadings()
     assertCollectionEqualsF(values, *DoubleArray(8) { Double.NaN }, eps = 1e-2)
     verify(dp).getGlucoseReadings(
-        now - DataLoader.preFetch - Duration.ofMinutes(10),
+        now - DataLoader.preFetch - ofMinutes(15),
         now + config.trainingPeriod)
     Unit
   }
@@ -118,7 +118,7 @@ class DataLoaderTest {
     assertCollectionEqualsF(
         values, Double.NaN, Double.NaN, Double.NaN,80.0, 120.0, 120.0, 120.0, 120.0, eps = 1e-2)
     verify(dp).getGlucoseReadings(
-        Instant.parse("2013-12-13T19:14:00Z"),
+        Instant.parse("2013-12-13T19:09:00Z"),
         Instant.parse("2013-12-13T20:00:00Z"))
     Unit
   }
@@ -623,7 +623,7 @@ class DataLoaderTest {
 
     val qat = trainingFrom - DataLoader.preFetch
     verifyBlocking(input) {
-      getGlucoseReadings(qat - ofMinutes(10), trainingFrom + config.trainingPeriod) }
+      getGlucoseReadings(qat - ofMinutes(15), trainingFrom + config.trainingPeriod) }
     verifyBlocking(input) {
       getHeartRates(trainingFrom - config.hrLong.max(), trainingFrom + config.trainingPeriod) }
     verifyBlocking(input) { getBasalProfileSwitches(
@@ -678,7 +678,7 @@ class DataLoaderTest {
 
     val qat = trainFrom - DataLoader.preFetch
     verifyBlocking(input, atLeastOnce()) {
-      getGlucoseReadings(qat- Duration.ofMinutes(10), trainUpto) }
+      getGlucoseReadings(qat - ofMinutes(15), trainUpto) }
     verifyBlocking(input, atLeastOnce()) { getHeartRates(qat, trainUpto) }
     verifyBlocking(input, atLeastOnce()) {
       getLongHeartRates(trainUpto, config.hrHighThreshold, config.hrLong) }
