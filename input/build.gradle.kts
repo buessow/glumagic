@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "cc.outabout.glumagic"
-version = "1.0.2"
+version = "1.0.3"
 
 val localProperties = Properties()
 File(rootProject.projectDir, "local.properties").inputStream().use { localProperties.load(it) }
@@ -53,10 +53,11 @@ publishing {
 }
 
 nmcp {
+    // Build publishAllPublicationsToCentralPortal to push to maven-central
     publishAllPublications {
         username = localProperties.getProperty("sonatype.username")
         password = localProperties.getProperty("sonatype.password")
-        publicationType = "USER_MANAGED"
+        publicationType = "AUTOMATIC"
     }
 }
 
